@@ -11,6 +11,7 @@ import (
 )
 
 // UpdateClient updates the IBC light client on src chain that tracks dst chain given the configured path
+// (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/relayer/client.go#L17)
 func UpdateClient(
 	ctx context.Context,
 	logger *zap.Logger,

@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// updateClientCmd is the command for updating a client
+// (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/tx.go#L232)
 func updateClientCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-client src_chain_name dst_chain_name path_name",

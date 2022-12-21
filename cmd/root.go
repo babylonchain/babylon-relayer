@@ -111,6 +111,7 @@ func Execute() {
 
 // withUsage wraps a PositionalArgs to display usage only when the PositionalArgs
 // variant is violated.
+// (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/root.go#L229)
 func withUsage(inner cobra.PositionalArgs) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if err := inner(cmd, args); err != nil {
@@ -125,6 +126,7 @@ func withUsage(inner cobra.PositionalArgs) cobra.PositionalArgs {
 
 // lineBreakCommand returns a new instance of the lineBreakCommand every time to avoid
 // data races in concurrent tests exercising commands.
+// (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/root.go#L223)
 func lineBreakCommand() *cobra.Command {
 	return &cobra.Command{Run: func(*cobra.Command, []string) {}}
 }
