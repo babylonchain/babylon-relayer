@@ -31,6 +31,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const AppName = "babylon-relayer"
+
 // NewRootCmd returns the root command for relayer.
 // If log is nil, a new zap.Logger is set on the app state
 // based on the command line flags regarding logging.
@@ -39,18 +41,23 @@ func NewRootCmd(log *zap.Logger) *cobra.Command {
 	rootCmd := relayercmd.NewRootCmd(log)
 
 	// override application metadata
-	rootCmd.Use = "babylon-relayer"
+	rootCmd.Use = AppName
 	rootCmd.Short = "This application is used for relaying headers from Cosmos Zones to Babylon periodically."
-	rootCmd.Long = strings.TrimSpace(`babylon-relayer has:
+	rootCmd.Long = strings.TrimSpace(fmt.Sprintf(`%s has:
 	1. Configuration management for Chains and Paths
 	2. Key management for managing multiple keys for multiple chains
 	3. Query and transaction functionality for IBC
 	4. Functionality for relaying headers from Cosmos Zones to Babylon periodically
  
 	NOTE: Most of the commands have aliases that make typing them much quicker 
-		  (i.e. 'babylon-relayer tx', 'babylon-relayer q', etc...)`)
+		  (i.e. '%s tx', '%s q', etc...)`, AppName, AppName, AppName))
 
-	// TODO: add Babylon-specific commands
+	// add Babylon-specific commands
+	rootCmd.AddCommand(
+		lineBreakCommand(),
+		updateClientCmd(),
+		lineBreakCommand(),
+	)
 
 	return rootCmd
 }
@@ -99,4 +106,24 @@ func Execute() {
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
+}
+
+// withUsage wraps a PositionalArgs to display usage only when the PositionalArgs
+// variant is violated.
+func withUsage(inner cobra.PositionalArgs) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if err := inner(cmd, args); err != nil {
+			cmd.Root().SilenceUsage = false
+			cmd.SilenceUsage = false
+			return err
+		}
+
+		return nil
+	}
+}
+
+// lineBreakCommand returns a new instance of the lineBreakCommand every time to avoid
+// data races in concurrent tests exercising commands.
+func lineBreakCommand() *cobra.Command {
+	return &cobra.Command{Run: func(*cobra.Command, []string) {}}
 }

@@ -60,7 +60,7 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 	if err != nil {
 		return nil, err
 	}
-	logger, err := newRootLogger(logFormat, debug)
+	logger, err := NewRootLogger(logFormat, debug)
 	if err != nil {
 		return nil, err
 	}
@@ -92,9 +92,9 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 	return config, nil
 }
 
-// newRootLogger returns a new Zap logger
+// NewRootLogger returns a new Zap logger
 // (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/root.go#L177)
-func newRootLogger(format string, debug bool) (*zap.Logger, error) {
+func NewRootLogger(format string, debug bool) (*zap.Logger, error) {
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = func(ts time.Time, encoder zapcore.PrimitiveArrayEncoder) {
 		encoder.AppendString(ts.UTC().Format("2006-01-02T15:04:05.000000Z07:00"))
