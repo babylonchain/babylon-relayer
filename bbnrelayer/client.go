@@ -2,8 +2,8 @@ package bbnrelayer
 
 import (
 	"context"
+	"time"
 
-	"github.com/babylonchain/babylon-relayer/config"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -13,16 +13,11 @@ import (
 // UpdateClient updates the IBC light client on src chain that tracks dst chain given the configured path
 func UpdateClient(
 	ctx context.Context,
+	logger *zap.Logger,
 	src *relayer.Chain,
 	dst *relayer.Chain,
 	memo string,
 ) error {
-	// TODO: config for logger
-	logger, err := config.NewRootLogger("auto", true)
-	if err != nil {
-		return err
-	}
-
 	srch, dsth, err := relayer.QueryLatestHeights(ctx, src, dst)
 	if err != nil {
 		return err
@@ -63,7 +58,34 @@ func UpdateClient(
 		"Clients updated",
 		zap.String("src_chain_id", src.ChainID()),
 		zap.String("src_client", src.PathEnd.ClientID),
+		zap.String("dst_chain_id", dst.ChainID()),
+		zap.String("dst_client", dst.PathEnd.ClientID),
 	)
 
+	return nil
+}
+
+func KeepUpdatingClient(
+	ctx context.Context,
+	logger *zap.Logger,
+	src *relayer.Chain,
+	dst *relayer.Chain,
+	memo string,
+	interval time.Duration,
+) error {
+	ticker := time.NewTicker(interval)
+	logger.Info(
+		"Keep updating client",
+		zap.String("src_chain_id", src.ChainID()),
+		zap.String("src_client", src.PathEnd.ClientID),
+		zap.String("dst_chain_id", dst.ChainID()),
+		zap.String("dst_client", dst.PathEnd.ClientID),
+		zap.Duration("interval", interval),
+	)
+	for ; true; <-ticker.C {
+		if err := UpdateClient(ctx, logger, src, dst, memo); err != nil {
+			return err
+		}
+	}
 	return nil
 }
