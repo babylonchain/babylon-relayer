@@ -3,6 +3,7 @@ package bbnrelayer
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
@@ -78,5 +79,32 @@ func (r *Relayer) UpdateClient(
 		zap.String("dst_client", dst.PathEnd.ClientID),
 	)
 
+	return nil
+}
+
+func (r *Relayer) KeepUpdatingClient(
+	ctx context.Context,
+	src *relayer.Chain,
+	dst *relayer.Chain,
+	memo string,
+	interval time.Duration,
+) error {
+	r.Lock()
+	defer r.Unlock()
+
+	ticker := time.NewTicker(interval)
+	r.logger.Info(
+		"Keep updating client",
+		zap.String("src_chain_id", src.ChainID()),
+		zap.String("src_client", src.PathEnd.ClientID),
+		zap.String("dst_chain_id", dst.ChainID()),
+		zap.String("dst_client", dst.PathEnd.ClientID),
+		zap.Duration("interval", interval),
+	)
+	for ; true; <-ticker.C {
+		if err := r.UpdateClient(ctx, src, dst, memo); err != nil {
+			return err
+		}
+	}
 	return nil
 }

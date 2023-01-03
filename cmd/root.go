@@ -6,7 +6,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -107,26 +107,4 @@ func Execute() {
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
-}
-
-// withUsage wraps a PositionalArgs to display usage only when the PositionalArgs
-// variant is violated.
-// (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/root.go#L229)
-func withUsage(inner cobra.PositionalArgs) cobra.PositionalArgs {
-	return func(cmd *cobra.Command, args []string) error {
-		if err := inner(cmd, args); err != nil {
-			cmd.Root().SilenceUsage = false
-			cmd.SilenceUsage = false
-			return err
-		}
-
-		return nil
-	}
-}
-
-// lineBreakCommand returns a new instance of the lineBreakCommand every time to avoid
-// data races in concurrent tests exercising commands.
-// (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/root.go#L223)
-func lineBreakCommand() *cobra.Command {
-	return &cobra.Command{Run: func(*cobra.Command, []string) {}}
 }
