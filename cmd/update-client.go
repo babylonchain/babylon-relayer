@@ -39,7 +39,9 @@ corresponding update-client message to babylon_chain_name.`,
 				return err
 			}
 
-			return bbnrelayer.UpdateClient(cmd.Context(), logger, babylonChain, czChain, memo)
+			relayer := bbnrelayer.New(logger)
+
+			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo)
 		},
 	}
 
@@ -82,7 +84,23 @@ corresponding update-client message to babylon_chain_name.`,
 				return err
 			}
 
-			return bbnrelayer.KeepUpdatingClient(cmd.Context(), logger, babylonChain, czChain, memo, interval)
+			relayer := bbnrelayer.New(logger)
+			ticker := time.NewTicker(interval)
+			logger.Info(
+				"Keep updating client",
+				zap.String("src_chain_id", babylonChain.ChainID()),
+				zap.String("src_client", babylonChain.PathEnd.ClientID),
+				zap.String("dst_chain_id", czChain.ChainID()),
+				zap.String("dst_client", czChain.PathEnd.ClientID),
+				zap.Duration("interval", interval),
+			)
+			for ; true; <-ticker.C {
+				if err := relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo); err != nil {
+					return err
+				}
+			}
+
+			return nil
 		},
 	}
 

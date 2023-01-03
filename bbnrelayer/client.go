@@ -2,7 +2,7 @@ package bbnrelayer
 
 import (
 	"context"
-	"time"
+	"sync"
 
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
@@ -10,15 +10,30 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// Relayer is a relayer that allows to relay multiple chains concurrently.
+// It is made thread-safe to avoid account sequence mismatch errors in Cosmos SDK accounts.
+type Relayer struct {
+	sync.Mutex
+	logger *zap.Logger
+}
+
+func New(logger *zap.Logger) *Relayer {
+	return &Relayer{
+		logger: logger,
+	}
+}
+
 // UpdateClient updates the IBC light client on src chain that tracks dst chain given the configured path
 // (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/relayer/client.go#L17)
-func UpdateClient(
+func (r *Relayer) UpdateClient(
 	ctx context.Context,
-	logger *zap.Logger,
 	src *relayer.Chain,
 	dst *relayer.Chain,
 	memo string,
 ) error {
+	r.Lock()
+	defer r.Unlock()
+
 	srch, dsth, err := relayer.QueryLatestHeights(ctx, src, dst)
 	if err != nil {
 		return err
@@ -42,10 +57,10 @@ func UpdateClient(
 	}
 
 	// Send msgs to src chain
-	result := clients.Send(ctx, logger, relayer.AsRelayMsgSender(src), relayer.AsRelayMsgSender(dst), memo)
+	result := clients.Send(ctx, r.logger, relayer.AsRelayMsgSender(src), relayer.AsRelayMsgSender(dst), memo)
 	if err := result.Error(); err != nil {
 		if result.PartiallySent() {
-			logger.Info(
+			r.logger.Info(
 				"Partial success when updating clients",
 				zap.String("src_chain_id", src.ChainID()),
 				zap.String("dst_chain_id", dst.ChainID()),
@@ -55,7 +70,7 @@ func UpdateClient(
 		return err
 	}
 
-	logger.Info(
+	r.logger.Info(
 		"Clients updated",
 		zap.String("src_chain_id", src.ChainID()),
 		zap.String("src_client", src.PathEnd.ClientID),
@@ -63,30 +78,5 @@ func UpdateClient(
 		zap.String("dst_client", dst.PathEnd.ClientID),
 	)
 
-	return nil
-}
-
-func KeepUpdatingClient(
-	ctx context.Context,
-	logger *zap.Logger,
-	src *relayer.Chain,
-	dst *relayer.Chain,
-	memo string,
-	interval time.Duration,
-) error {
-	ticker := time.NewTicker(interval)
-	logger.Info(
-		"Keep updating client",
-		zap.String("src_chain_id", src.ChainID()),
-		zap.String("src_client", src.PathEnd.ClientID),
-		zap.String("dst_chain_id", dst.ChainID()),
-		zap.String("dst_client", dst.PathEnd.ClientID),
-		zap.Duration("interval", interval),
-	)
-	for ; true; <-ticker.C {
-		if err := UpdateClient(ctx, logger, src, dst, memo); err != nil {
-			return err
-		}
-	}
 	return nil
 }
