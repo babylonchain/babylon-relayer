@@ -38,6 +38,10 @@ The configuration of Babylon relayer is exactly the same as the official IBC rel
 Please read [the IBC relayer's documentation](https://github.com/cosmos/relayer/tree/main/docs).
 This repo also provides some example configurations under the `example/` directory.
 
+Note that some chains (e.g., Injective and EVMOS) impose extra codec formats for its RPC calls.
+To support such chains, one needs to add an `"extra-codecs"` entry to its config json file.
+An example can be found in `examples/chains/injective.json`.
+
 ## Usage
 
 To add chains to `config.yaml`:
