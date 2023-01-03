@@ -1,0 +1,17 @@
+{
+    "type": "cosmos",
+    "value": {
+        "key": "babylon-key",
+        "chain-id": "bbn-demo0",
+        "rpc-addr": "http://rpc0.demo.babylonchain.io:26657",
+        "grpc-addr": "",
+        "account-prefix": "bbn",
+        "keyring-backend": "test",
+        "gas-adjustment": 1.5,
+        "gas-prices": "0.002ubbn",
+        "debug": true,
+        "timeout": "10s",
+        "output-format": "json",
+        "sign-mode": "direct"
+    }
+}

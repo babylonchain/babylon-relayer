@@ -1,0 +1,154 @@
+global:
+    api-listen-addr: :5183
+    timeout: 20s
+    memo: ""
+    light-cache-size: 10
+chains:
+    akash:
+        type: cosmos
+        value:
+            key: akash-key
+            chain-id: sandbox
+            rpc-addr: http://rpc.sandbox.ny.aksh.pw:26657
+            account-prefix: akash
+            keyring-backend: test
+            gas-adjustment: 1.5
+            gas-prices: 1uakt
+            min-gas-amount: 0
+            debug: true
+            timeout: 10s
+            output-format: json
+            sign-mode: direct
+            extra-codecs: []
+    babylon:
+        type: cosmos
+        value:
+            key: babylon-key
+            chain-id: bbn-demo0
+            rpc-addr: http://rpc0.demo.babylonchain.io:26657
+            account-prefix: bbn
+            keyring-backend: test
+            gas-adjustment: 1.5
+            gas-prices: 0.002ubbn
+            min-gas-amount: 0
+            debug: true
+            timeout: 10s
+            output-format: json
+            sign-mode: direct
+            extra-codecs: []
+    injective:
+        type: cosmos
+        value:
+            key: injective-key
+            chain-id: injective-888
+            rpc-addr: http://176.9.147.152:26657
+            account-prefix: inj
+            keyring-backend: test
+            gas-adjustment: 1.5
+            gas-prices: 50000000000inj
+            min-gas-amount: 0
+            debug: true
+            timeout: 10s
+            output-format: json
+            sign-mode: direct
+            extra-codecs:
+                - injective
+    juno:
+        type: cosmos
+        value:
+            key: juno-key
+            chain-id: uni-5
+            rpc-addr: https://rpc.uni.junonetwork.io:443
+            account-prefix: juno
+            keyring-backend: test
+            gas-adjustment: 1.5
+            gas-prices: 0.1ujunox
+            min-gas-amount: 0
+            debug: true
+            timeout: 10s
+            output-format: json
+            sign-mode: direct
+            extra-codecs: []
+    osmosis:
+        type: cosmos
+        value:
+            key: osmosis-key
+            chain-id: osmo-test-4
+            rpc-addr: https://osmosis-testnet-rpc.allthatnode.com:26657/
+            account-prefix: osmo
+            keyring-backend: test
+            gas-adjustment: 1.5
+            gas-prices: 0.01uosmo
+            min-gas-amount: 0
+            debug: true
+            timeout: 10s
+            output-format: json
+            sign-mode: direct
+            extra-codecs: []
+    secret:
+        type: cosmos
+        value:
+            key: secret-key
+            chain-id: pulsar-2
+            rpc-addr: https://rpc.pulsar.scrttestnet.com:443
+            account-prefix: secret
+            keyring-backend: test
+            gas-adjustment: 1.5
+            gas-prices: 0.1uscrt
+            min-gas-amount: 0
+            debug: true
+            timeout: 10s
+            output-format: json
+            sign-mode: direct
+            extra-codecs: []
+paths:
+    akash:
+        src:
+            chain-id: bbn-demo0
+            client-id: 07-tendermint-3
+        dst:
+            chain-id: sandbox
+            client-id: 07-tendermint-2
+        src-channel-filter:
+            rule: ""
+            channel-list: []
+    injective:
+        src:
+            chain-id: bbn-demo0
+            client-id: 07-tendermint-5
+        dst:
+            chain-id: injective-888
+            client-id: 07-tendermint-83
+        src-channel-filter:
+            rule: ""
+            channel-list: []
+    juno:
+        src:
+            chain-id: bbn-demo0
+            client-id: 07-tendermint-2
+        dst:
+            chain-id: uni-5
+            client-id: 07-tendermint-240
+        src-channel-filter:
+            rule: ""
+            channel-list: []
+    osmosis:
+        src:
+            chain-id: bbn-demo0
+            client-id: 07-tendermint-0
+        dst:
+            chain-id: osmo-test-4
+            client-id: 07-tendermint-3295
+        src-channel-filter:
+            rule: ""
+            channel-list: []
+    secret:
+        src:
+            chain-id: bbn-demo0
+            client-id: 07-tendermint-1
+        dst:
+            chain-id: pulsar-2
+            client-id: 07-tendermint-56
+        src-channel-filter:
+            rule: ""
+            channel-list: []

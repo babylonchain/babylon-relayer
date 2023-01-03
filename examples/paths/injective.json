@@ -1,0 +1,23 @@
+{
+    "src": {
+        "chain-id": "bbn-demo0",
+        "port-id": "zoneconcierge",
+        "channel-id": "channel-0",
+        "order": "unordered",
+        "version": "zoneconcierge-1"
+    },
+    "dst": {
+        "chain-id": "injective-888",
+        "port-id": "zoneconcierge",
+        "channel-id": "channel-0",
+        "order": "unordered",
+        "version": "ics20-1"
+    },
+    "strategy": {
+        "type": "naive"
+    },
+    "src-channel-filter": {
+        "rule": null,
+        "channel-list": []
+    }
+}
