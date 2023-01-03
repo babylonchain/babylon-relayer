@@ -89,9 +89,6 @@ func (r *Relayer) KeepUpdatingClient(
 	memo string,
 	interval time.Duration,
 ) error {
-	r.Lock()
-	defer r.Unlock()
-
 	ticker := time.NewTicker(interval)
 	r.logger.Info(
 		"Keep updating client",
@@ -102,6 +99,7 @@ func (r *Relayer) KeepUpdatingClient(
 		zap.Duration("interval", interval),
 	)
 	for ; true; <-ticker.C {
+		// Note that UpdateClient is a thread-safe function
 		if err := r.UpdateClient(ctx, src, dst, memo); err != nil {
 			return err
 		}
