@@ -57,6 +57,7 @@ func NewRootCmd(log *zap.Logger) *cobra.Command {
 		lineBreakCommand(),
 		updateClientCmd(),
 		keepUpdatingClientCmd(),
+		keepUpdatingClientsCmd(),
 		lineBreakCommand(),
 	)
 

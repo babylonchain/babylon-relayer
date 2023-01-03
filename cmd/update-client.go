@@ -9,6 +9,7 @@ import (
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
 	"github.com/babylonchain/babylon-relayer/config"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 // updateClientCmd is the command for updating a CZ light client in Babylon
@@ -172,7 +173,10 @@ func keepUpdatingClientsCmd() *cobra.Command {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval)
+					if err := relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval); err != nil {
+						// NOTE: we don't panic here since the relayer should keep relaying other chains
+						logger.Error("failed to update CZ chain", zap.String("chain_id", czChain.ChainID()), zap.Error(err))
+					}
 				}()
 			}
 
