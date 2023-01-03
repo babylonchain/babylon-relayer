@@ -1,6 +1,6 @@
 module github.com/babylonchain/babylon-relayer
 
-go 1.18
+go 1.19
 
 require (
 	github.com/cosmos/relayer/v2 v2.2.0-rc3
