@@ -68,3 +68,8 @@ To start relaying headers of a chain to Babylon:
 ```console
 babylon-relayer keep-update-client babylon $CHAIN $CHAIN --interval $INTERVAL
 ```
+
+To start relaying headers of all chains in the config to Babylon:
+```console
+babylon-relayer --home /home/ubuntu/data/relayer keep-update-clients --interval $INTERVAL
+```

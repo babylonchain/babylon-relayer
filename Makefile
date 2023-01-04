@@ -12,6 +12,10 @@ else
 	@go build -mod=readonly -o build/babylon-relayer main.go
 endif
 
+clean:
+	@echo "removing build/"
+	@rm -rf ./build
+
 install: go.sum
 	@echo "installing babylon-relayer binary..."
 	@go build -mod=readonly -o $(GOBIN)/babylon-relayer main.go

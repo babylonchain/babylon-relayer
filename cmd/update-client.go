@@ -3,13 +3,12 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
 	"github.com/babylonchain/babylon-relayer/config"
-	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 // updateClientCmd is the command for updating a CZ light client in Babylon
@@ -39,7 +38,9 @@ corresponding update-client message to babylon_chain_name.`,
 				return err
 			}
 
-			return bbnrelayer.UpdateClient(cmd.Context(), logger, babylonChain, czChain, memo)
+			relayer := bbnrelayer.New(logger)
+
+			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo)
 		},
 	}
 
@@ -82,7 +83,9 @@ corresponding update-client message to babylon_chain_name.`,
 				return err
 			}
 
-			return bbnrelayer.KeepUpdatingClient(cmd.Context(), logger, babylonChain, czChain, memo, interval)
+			relayer := bbnrelayer.New(logger)
+
+			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval)
 		},
 	}
 
@@ -92,50 +95,70 @@ corresponding update-client message to babylon_chain_name.`,
 	return cmd
 }
 
-// getLoggerAndPathEnds is a helper function that retrieves the logger, babylonChain and czChain
-// from the given cmd and args
-func getLoggerAndPathEnds(cmd *cobra.Command, args []string) (*zap.Logger, *relayer.Chain, *relayer.Chain, error) {
-	// load config
-	homePath, err := cmd.Flags().GetString("home")
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	cfg, err := config.LoadConfig(homePath, cmd)
-	if err != nil {
-		return nil, nil, nil, err
+func keepUpdatingClientsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "keep-update-clients",
+		Short:   "keep updating IBC client of a list of chains specified in config on Babylon",
+		Long:    `Keep updating IBC client of a list of chains specified in config on Babylon.`,
+		Args:    withUsage(cobra.ExactArgs(0)),
+		Example: strings.TrimSpace(fmt.Sprintf(`$ %s keep-update-clients`, AppName)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// load config
+			homePath, err := cmd.Flags().GetString("home")
+			if err != nil {
+				return err
+			}
+			cfg, err := config.LoadConfig(homePath, cmd)
+			if err != nil {
+				return err
+			}
+
+			// construct logger
+			logFormat, err := cmd.Flags().GetString("log-format")
+			if err != nil {
+				return err
+			}
+			debug, err := cmd.Flags().GetBool("debug")
+			if err != nil {
+				return err
+			}
+			logger, err := config.NewRootLogger(logFormat, debug)
+			if err != nil {
+				return err
+			}
+
+			// retrieve necessary flags
+			memo, err := cmd.Flags().GetString("memo")
+			if err != nil {
+				return err
+			}
+			intervalStr, err := cmd.Flags().GetString("interval")
+			if err != nil {
+				return err
+			}
+			interval, err := time.ParseDuration(intervalStr)
+			if err != nil {
+				return err
+			}
+
+			// we want the program to exit only after all go routines have finished
+			var wg sync.WaitGroup
+
+			// start the relayer for all paths in cfg.Paths
+			relayer := bbnrelayer.New(logger)
+			relayer.KeepUpdatingClients(cmd.Context(), &wg, cfg.Paths, cfg.Chains, memo, interval)
+
+			// Note that this function is executed inside `root.go`'s `Execute()` function,
+			// which keeps the program to be alive until being interrupted.
+			// Here we just need to keep the main thread to be alive all the time.
+			wg.Wait()
+
+			return nil
+		},
 	}
 
-	// construct logger
-	logFormat, err := cmd.Flags().GetString("log-format")
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	debug, err := cmd.Flags().GetBool("debug")
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	logger, err := config.NewRootLogger(logFormat, debug)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
+	cmd.Flags().String("interval", "10m", "the interval between two update-client attempts")
 
-	// retrieve babylonChain chain, czChain chain, and path between babylonChain and czChain
-	babylonName := args[0]
-	babylonChain, ok := cfg.Chains[babylonName]
-	if !ok {
-		return nil, nil, nil, fmt.Errorf("babylonChain %s not found in config. consider running `%s chains add %s`", babylonName, AppName, babylonName)
-	}
-	czName := args[1]
-	czChain, ok := cfg.Chains[czName]
-	if !ok {
-		return nil, nil, nil, fmt.Errorf("czChain %s not found in config. consider running `%s chains add %s`", czName, AppName, czName)
-	}
-	path, err := cfg.Paths.Get(args[2])
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	babylonChain.PathEnd = path.End(babylonChain.ChainID())
-	czChain.PathEnd = path.End(czChain.ChainID())
-
-	return logger, babylonChain, czChain, nil
+	return cmd
 }
