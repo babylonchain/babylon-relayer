@@ -1,0 +1,20 @@
+{
+    "type": "cosmos",
+    "value": {
+        "key": "injective-key",
+        "chain-id": "injective-888",
+        "rpc-addr": "http://176.9.147.152:26657",
+        "grpc-addr": "http://176.9.147.152:9091",
+        "account-prefix": "inj",
+        "keyring-backend": "test",
+        "gas-adjustment": 1.5,
+        "gas-prices": "50000000000inj",
+        "debug": true,
+        "timeout": "10s",
+        "output-format": "json",
+        "sign-mode": "direct",
+        "extra-codecs": [
+            "injective"
+        ]
+    }
+}
