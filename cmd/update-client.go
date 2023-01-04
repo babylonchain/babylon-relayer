@@ -167,17 +167,20 @@ func keepUpdatingClientsCmd() *cobra.Command {
 					return fmt.Errorf("czChain with ID %s not found in config: %w", path.Dst.ChainID, err)
 				}
 
+				// copy the objects of two chains to prevent them from sharing the same PathEnd
+				copiedBabylonChain := *babylonChain
+				copiedCZChain := *czChain
 				// set path end for two chains
-				babylonChain.PathEnd = path.End(babylonChain.ChainID())
-				czChain.PathEnd = path.End(czChain.ChainID())
+				copiedBabylonChain.PathEnd = path.End(babylonChain.ChainID())
+				copiedCZChain.PathEnd = path.End(czChain.ChainID())
 
 				// start updating the czChain light client on babylonChain
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					if err := relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval); err != nil {
+					if err := relayer.KeepUpdatingClient(cmd.Context(), &copiedBabylonChain, &copiedCZChain, memo, interval); err != nil {
 						// NOTE: we don't panic here since the relayer should keep relaying other chains
-						logger.Error("failed to update CZ chain", zap.String("chain_id", czChain.ChainID()), zap.Error(err))
+						logger.Error("failed to update CZ chain", zap.String("chain_id", copiedCZChain.ChainID()), zap.Error(err))
 					}
 				}()
 			}
