@@ -101,7 +101,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 		Use:     "keep-update-clients",
 		Short:   "keep updating IBC client of a list of chains specified in config on Babylon",
 		Long:    `Keep updating IBC client of a list of chains specified in config on Babylon.`,
-		Args:    withUsage(cobra.MinimumNArgs(2)),
+		Args:    withUsage(cobra.ExactArgs(0)),
 		Example: strings.TrimSpace(fmt.Sprintf(`$ %s keep-update-clients`, AppName)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// load config
@@ -147,12 +147,14 @@ func keepUpdatingClientsCmd() *cobra.Command {
 
 			relayer := bbnrelayer.New(logger)
 
+			logger.Info("Start relaying headers for the following chains", zap.Any("paths", cfg.Paths))
+
 			// for each CZ, start a KeepUpdatingClient go routine
 			for _, path := range cfg.Paths {
 				// create a new babylonChain chain object
-				babylonChain, ok := cfg.Chains["babylon"]
-				if !ok {
-					return fmt.Errorf("babylon not found in config. consider running `%s chains add babylon`", AppName)
+				babylonChain, err := cfg.Chains.Get(path.Src.ChainID)
+				if err != nil {
+					return fmt.Errorf("babylon with ID %s not found in config: %w", path.Src.ChainID, err)
 				}
 				// ensure that key in babylonChain chain exists
 				if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
