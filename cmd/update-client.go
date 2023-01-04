@@ -9,7 +9,6 @@ import (
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
 	"github.com/babylonchain/babylon-relayer/config"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 // updateClientCmd is the command for updating a CZ light client in Babylon
@@ -145,45 +144,9 @@ func keepUpdatingClientsCmd() *cobra.Command {
 			// we want the program to exit only after all go routines have finished
 			var wg sync.WaitGroup
 
+			// start the relayer for all paths in cfg.Paths
 			relayer := bbnrelayer.New(logger)
-
-			logger.Info("Start relaying headers for the following chains", zap.Any("paths", cfg.Paths))
-
-			// for each CZ, start a KeepUpdatingClient go routine
-			for _, path := range cfg.Paths {
-				// get babylonChain object from config
-				babylonChain, err := cfg.Chains.Get(path.Src.ChainID)
-				if err != nil {
-					return fmt.Errorf("babylon with ID %s not found in config: %w", path.Src.ChainID, err)
-				}
-				// ensure that key in babylonChain chain exists
-				if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
-					return fmt.Errorf("key %s not found on babylonChain chain %s", babylonChain.ChainProvider.Key(), babylonChain.ChainID())
-				}
-
-				// get CZ object from config
-				czChain, err := cfg.Chains.Get(path.Dst.ChainID)
-				if err != nil {
-					return fmt.Errorf("czChain with ID %s not found in config: %w", path.Dst.ChainID, err)
-				}
-
-				// copy the objects of two chains to prevent them from sharing the same PathEnd
-				copiedBabylonChain := *babylonChain
-				copiedCZChain := *czChain
-				// set path end for two chains
-				copiedBabylonChain.PathEnd = path.End(babylonChain.ChainID())
-				copiedCZChain.PathEnd = path.End(czChain.ChainID())
-
-				// start updating the czChain light client on babylonChain
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					if err := relayer.KeepUpdatingClient(cmd.Context(), &copiedBabylonChain, &copiedCZChain, memo, interval); err != nil {
-						// NOTE: we don't panic here since the relayer should keep relaying other chains
-						logger.Error("failed to update CZ chain", zap.String("chain_id", copiedCZChain.ChainID()), zap.Error(err))
-					}
-				}()
-			}
+			relayer.KeepUpdatingClients(cmd.Context(), &wg, cfg.Paths, cfg.Chains, memo, interval)
 
 			// Note that this function is executed inside `root.go`'s `Execute()` function,
 			// which keeps the program to be alive until being interrupted.

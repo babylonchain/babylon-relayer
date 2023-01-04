@@ -106,3 +106,72 @@ func (r *Relayer) KeepUpdatingClient(
 	}
 	return nil
 }
+
+func (r *Relayer) KeepUpdatingClients(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	paths relayer.Paths,
+	chains relayer.Chains,
+	memo string,
+	interval time.Duration,
+) {
+	r.logger.Info("Start relaying headers for the following chains", zap.Any("paths", paths))
+
+	// for each CZ, start a KeepUpdatingClient go routine
+	for pathName, path := range paths {
+		// get babylonChain object from config
+		babylonChain, err := chains.Get(path.Src.ChainID)
+		if err != nil {
+			r.logger.Error(
+				"babylon not found in config",
+				zap.String("path", pathName),
+				zap.String("chain_id", path.Src.ChainID),
+				zap.Error(err),
+			)
+			continue
+		}
+		// ensure that key in babylonChain chain exists
+		if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
+			r.logger.Error(
+				"key not found on Babylon chain, skipping this path",
+				zap.String("path", pathName),
+				zap.String("key", babylonChain.ChainProvider.Key()),
+				zap.String("chain_id", babylonChain.ChainID()),
+			)
+			continue
+		}
+
+		// get CZ object from config
+		czChain, err := chains.Get(path.Dst.ChainID)
+		if err != nil {
+			r.logger.Error(
+				"CZ chain not found in config",
+				zap.String("path", pathName),
+				zap.String("chain_id", path.Dst.ChainID),
+				zap.Error(err),
+			)
+			continue
+		}
+
+		// copy the objects of two chains to prevent them from sharing the same PathEnd
+		copiedBabylonChain := *babylonChain
+		copiedCZChain := *czChain
+		// set path end for two chains
+		copiedBabylonChain.PathEnd = path.End(babylonChain.ChainID())
+		copiedCZChain.PathEnd = path.End(czChain.ChainID())
+
+		// start updating the czChain light client on babylonChain
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, memo, interval); err != nil {
+				// NOTE: we don't panic here since the relayer should keep relaying other chains
+				r.logger.Error(
+					"failed to update CZ chain",
+					zap.String("chain_id", copiedCZChain.ChainID()),
+					zap.Error(err),
+				)
+			}
+		}()
+	}
+}
