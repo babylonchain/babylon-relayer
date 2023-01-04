@@ -151,7 +151,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 
 			// for each CZ, start a KeepUpdatingClient go routine
 			for _, path := range cfg.Paths {
-				// create a new babylonChain chain object
+				// get babylonChain object from config
 				babylonChain, err := cfg.Chains.Get(path.Src.ChainID)
 				if err != nil {
 					return fmt.Errorf("babylon with ID %s not found in config: %w", path.Src.ChainID, err)
@@ -161,7 +161,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 					return fmt.Errorf("key %s not found on babylonChain chain %s", babylonChain.ChainProvider.Key(), babylonChain.ChainID())
 				}
 
-				// create a new CZ object
+				// get CZ object from config
 				czChain, err := cfg.Chains.Get(path.Dst.ChainID)
 				if err != nil {
 					return fmt.Errorf("czChain with ID %s not found in config: %w", path.Dst.ChainID, err)
@@ -185,8 +185,9 @@ func keepUpdatingClientsCmd() *cobra.Command {
 				}()
 			}
 
-			// Note that this function is executed inside `root.go`'s `Execute()` function, which keeps the program to be alive until being
-			// Here we just need to keep the main thread to be alive all the time
+			// Note that this function is executed inside `root.go`'s `Execute()` function,
+			// which keeps the program to be alive until being interrupted.
+			// Here we just need to keep the main thread to be alive all the time.
 			wg.Wait()
 
 			return nil
