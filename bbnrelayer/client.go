@@ -32,7 +32,7 @@ func (r *Relayer) createClientIfNotExist(
 	path *relayer.Path,
 	memo string) error {
 
-	// query the latest heights on src and dst and retry if the query fails
+	// query the latest heights on src and dst
 	srch, dsth, err := relayer.QueryLatestHeights(ctx, src, dst)
 	if err != nil {
 		return fmt.Errorf("failed to query latest heights: %w", err)
@@ -47,7 +47,7 @@ func (r *Relayer) createClientIfNotExist(
 	// if the code reaches here, then it means the client does not exist
 	// we need to create a new one
 
-	// Query the light signed headers for src & dst at the heights srch & dsth, retry if the query fails
+	// Query the light signed headers for src & dst at the heights srch & dsth
 	srcUpdateHeader, dstUpdateHeader, err := relayer.QueryIBCHeaders(ctx, src, dst, srch, dsth)
 	if err != nil {
 		return err
