@@ -1,5 +1,6 @@
 GOPATH := $(shell go env GOPATH)
 GOBIN := $(GOPATH)/bin
+DOCKER = $(shell which docker)
 
 all: lint install
 
@@ -27,3 +28,9 @@ lint:
 	@golangci-lint run
 	@find . -name '*.go' -type f -not -path "*.git*" | xargs gofmt -d -s
 	@go mod verify
+
+relayer-docker: relayer-docker-rmi
+	$(DOCKER) build --tag babylonchain/babylon-relayer .
+
+relayer-docker-rmi:
+	$(DOCKER) rmi babylonchain/babylon-relayer 2>/dev/null; true
