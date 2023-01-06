@@ -55,6 +55,7 @@ func (r *Relayer) createClientIfNotExist(
 
 	// create the client on src chain, where we use default values for some fields
 	// TODO: allow custom TrustingPeriod
+	r.Lock()
 	if _, err := relayer.CreateClient(
 		ctx,
 		src,
@@ -69,6 +70,7 @@ func (r *Relayer) createClientIfNotExist(
 	); err != nil {
 		return err
 	}
+	r.Unlock()
 
 	return nil
 }
