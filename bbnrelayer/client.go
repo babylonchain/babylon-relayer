@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -34,60 +33,23 @@ func (r *Relayer) createClientIfNotExist(
 	memo string) error {
 
 	// query the latest heights on src and dst and retry if the query fails
-	var srch, dsth int64
-	if err := retry.Do(func() error {
-		var err error
-		srch, dsth, err = relayer.QueryLatestHeights(ctx, src, dst)
-		if srch == 0 || dsth == 0 || err != nil {
-			return fmt.Errorf("failed to query latest heights: %w", err)
-		}
-		return err
-	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr); err != nil {
-		return err
+	srch, dsth, err := relayer.QueryLatestHeights(ctx, src, dst)
+	if err != nil {
+		return fmt.Errorf("failed to query latest heights: %w", err)
 	}
 
 	// check whether the dst light client exists on src at the latest height
 	// if err is nil, then the client exists, return directly
-	if err := retry.Do(func() error {
-		_, err := dst.ChainProvider.QueryClientState(ctx, dsth, dst.ClientID())
-		return err
-	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		r.logger.Info(
-			"Failed to query client state when updating clients",
-			zap.String("client_id", dst.ClientID()),
-			zap.Uint("attempt", n+1),
-			zap.Uint("max_attempts", relayer.RtyAttNum),
-			zap.Error(err),
-		)
-	})); err != nil {
-		return err
+	if _, err := src.ChainProvider.QueryClientState(ctx, srch, dst.ClientID()); err == nil {
+		return nil
 	}
 
 	// if the code reaches here, then it means the client does not exist
 	// we need to create a new one
 
 	// Query the light signed headers for src & dst at the heights srch & dsth, retry if the query fails
-	var srcUpdateHeader, dstUpdateHeader provider.IBCHeader
-	if err := retry.Do(func() error {
-		var err error
-		srcUpdateHeader, dstUpdateHeader, err = relayer.QueryIBCHeaders(ctx, src, dst, srch, dsth)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, retry.Context(ctx), relayer.RtyAtt, relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
-		r.logger.Info(
-			"Failed to get light signed header",
-			zap.String("src_chain_id", src.ChainID()),
-			zap.Int64("src_height", srch),
-			zap.String("dst_chain_id", dst.ChainID()),
-			zap.Int64("dst_height", dsth),
-			zap.Uint("attempt", n+1),
-			zap.Uint("max_attempts", relayer.RtyAttNum),
-			zap.Error(err),
-		)
-		srch, dsth, _ = relayer.QueryLatestHeights(ctx, src, dst)
-	})); err != nil {
+	srcUpdateHeader, dstUpdateHeader, err := relayer.QueryIBCHeaders(ctx, src, dst, srch, dsth)
+	if err != nil {
 		return err
 	}
 
