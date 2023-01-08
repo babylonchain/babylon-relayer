@@ -2,6 +2,7 @@ package bbnrelayer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -22,6 +23,66 @@ func New(logger *zap.Logger) *Relayer {
 	return &Relayer{
 		logger: logger,
 	}
+}
+
+func (r *Relayer) createClientIfNotExist(
+	ctx context.Context,
+	src *relayer.Chain,
+	dst *relayer.Chain,
+	path *relayer.Path,
+	memo string) error {
+
+	// query the latest heights on src and dst
+	srch, dsth, err := relayer.QueryLatestHeights(ctx, src, dst)
+	if err != nil {
+		return fmt.Errorf("failed to query latest heights: %w", err)
+	}
+
+	// check whether the dst light client exists on src at the latest height
+	// if err is nil, then the client exists, return directly
+	if _, err := src.ChainProvider.QueryClientState(ctx, srch, dst.ClientID()); err == nil {
+		r.logger.Debug(
+			"the light client already exists. Skip creating the light client.",
+			zap.String("src_chain_id", src.ChainID()),
+			zap.String("dst_chain_id", dst.ChainID()),
+		)
+		return nil
+	}
+
+	// if the code reaches here, then it means the client does not exist
+	// we need to create a new one
+	r.logger.Debug(
+		"the light client does not exist. Creating a new light client.",
+		zap.String("src_chain_id", src.ChainID()),
+		zap.String("dst_chain_id", dst.ChainID()),
+	)
+
+	// Query the light signed headers for src & dst at the heights srch & dsth
+	srcUpdateHeader, dstUpdateHeader, err := relayer.QueryIBCHeaders(ctx, src, dst, srch, dsth)
+	if err != nil {
+		return err
+	}
+
+	// create the client on src chain, where we use default values for some fields
+	// TODO: allow custom TrustingPeriod
+	r.Lock()
+	if _, err := relayer.CreateClient(
+		ctx,
+		src,
+		dst,
+		srcUpdateHeader,
+		dstUpdateHeader,
+		true,  // allowUpdateAfterExpiry
+		true,  // allowUpdateAfterMisbehaviour
+		false, // override
+		0,     // customClientTrustingPeriod
+		memo,
+	); err != nil {
+		return err
+	}
+	r.Unlock()
+
+	return nil
 }
 
 // UpdateClient updates the IBC light client on src chain that tracks dst chain given the configured path
@@ -159,6 +220,16 @@ func (r *Relayer) KeepUpdatingClients(
 		// set path end for two chains
 		copiedBabylonChain.PathEnd = path.End(babylonChain.ChainID())
 		copiedCZChain.PathEnd = path.End(czChain.ChainID())
+
+		// ensure the CZ chain light client exists on Babylon
+		if err := r.createClientIfNotExist(ctx, &copiedBabylonChain, &copiedCZChain, path, memo); err != nil {
+			r.logger.Error(
+				"failed to ensure CZ light client exsits on Babylon",
+				zap.String("chain_id", copiedCZChain.ChainID()),
+				zap.Error(err),
+			)
+			continue
+		}
 
 		// start updating the czChain light client on babylonChain
 		wg.Add(1)
