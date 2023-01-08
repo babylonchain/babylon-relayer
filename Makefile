@@ -33,4 +33,4 @@ relayer-docker: relayer-docker-rmi
 	$(DOCKER) build --tag babylonchain/babylon-relayer .
 
 relayer-docker-rmi:
-	$(DOCKER) rmi babylonchain/babylon-relayer 2>/dev/null; true
+	$(DOCKER) rmi babylonchain/babylon-relayer 2>/dev/null
