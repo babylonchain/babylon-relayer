@@ -41,8 +41,19 @@ func (r *Relayer) createClientIfNotExist(
 	// check whether the dst light client exists on src at the latest height
 	// if err is nil, then the client exists, return directly
 	if _, err := src.ChainProvider.QueryClientState(ctx, srch, dst.ClientID()); err == nil {
+		r.logger.Debug(
+			"the light client already exists. Skip creating the light client.",
+			zap.String("src_chain_id", src.ChainID()),
+			zap.String("dst_chain_id", dst.ChainID()),
+		)
 		return nil
 	}
+
+	r.logger.Debug(
+		"the light client does not exist. Creating a new light client.",
+		zap.String("src_chain_id", src.ChainID()),
+		zap.String("dst_chain_id", dst.ChainID()),
+	)
 
 	// if the code reaches here, then it means the client does not exist
 	// we need to create a new one
