@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
 	"github.com/babylonchain/babylon-relayer/config"
+	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/spf13/cobra"
 )
 
@@ -37,14 +37,19 @@ corresponding update-client message to babylon_chain_name.`,
 			if err != nil {
 				return err
 			}
+			numRetries, err := cmd.Flags().GetUint("retry")
+			if err != nil {
+				return err
+			}
 
 			relayer := bbnrelayer.New(logger)
 
-			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo)
+			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo, numRetries)
 		},
 	}
 
 	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
+	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
 
 	return cmd
 }
@@ -74,23 +79,24 @@ corresponding update-client message to babylon_chain_name.`,
 			if err != nil {
 				return err
 			}
-			intervalStr, err := cmd.Flags().GetString("interval")
+			interval, err := cmd.Flags().GetDuration("interval")
 			if err != nil {
 				return err
 			}
-			interval, err := time.ParseDuration(intervalStr)
+			numRetries, err := cmd.Flags().GetUint("retry")
 			if err != nil {
 				return err
 			}
 
 			relayer := bbnrelayer.New(logger)
 
-			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval)
+			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval, numRetries)
 		},
 	}
 
 	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().String("interval", "10m", "the interval between two update-client attempts")
+	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
 
 	return cmd
 }
@@ -132,11 +138,11 @@ func keepUpdatingClientsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			intervalStr, err := cmd.Flags().GetString("interval")
+			interval, err := cmd.Flags().GetDuration("interval")
 			if err != nil {
 				return err
 			}
-			interval, err := time.ParseDuration(intervalStr)
+			numRetries, err := cmd.Flags().GetUint("retry")
 			if err != nil {
 				return err
 			}
@@ -146,7 +152,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 
 			// start the relayer for all paths in cfg.Paths
 			relayer := bbnrelayer.New(logger)
-			relayer.KeepUpdatingClients(cmd.Context(), &wg, cfg.Paths, cfg.Chains, memo, interval)
+			relayer.KeepUpdatingClients(cmd.Context(), &wg, cfg.Paths, cfg.Chains, memo, interval, numRetries)
 
 			// Note that this function is executed inside `root.go`'s `Execute()` function,
 			// which keeps the program to be alive until being interrupted.
@@ -159,6 +165,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 
 	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().String("interval", "10m", "the interval between two update-client attempts")
+	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
 
 	return cmd
 }
