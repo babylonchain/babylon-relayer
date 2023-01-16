@@ -90,10 +90,10 @@ func (r *Relayer) createClientIfNotExist(
 		dst,
 		srcUpdateHeader,
 		dstUpdateHeader,
-		true,  // allowUpdateAfterExpiry
-		true,  // allowUpdateAfterMisbehaviour
-		false, // override
-		0,     // customClientTrustingPeriod
+		true, // allowUpdateAfterExpiry
+		true, // allowUpdateAfterMisbehaviour
+		true, // override
+		0,    // customClientTrustingPeriod
 		memo,
 	); err != nil {
 		return err
