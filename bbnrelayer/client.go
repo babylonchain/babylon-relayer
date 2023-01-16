@@ -93,9 +93,6 @@ func (r *Relayer) UpdateClient(
 	dst *relayer.Chain,
 	memo string,
 ) error {
-	r.Lock()
-	defer r.Unlock()
-
 	srch, dsth, err := relayer.QueryLatestHeights(ctx, src, dst)
 	if err != nil {
 		return err
@@ -119,7 +116,9 @@ func (r *Relayer) UpdateClient(
 	}
 
 	// Send msgs to src chain
+	r.Lock()
 	result := clients.Send(ctx, r.logger, relayer.AsRelayMsgSender(src), relayer.AsRelayMsgSender(dst), memo)
+	r.Unlock()
 	if err := result.Error(); err != nil {
 		if result.PartiallySent() {
 			r.logger.Info(
