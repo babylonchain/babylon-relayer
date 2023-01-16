@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
 	"github.com/babylonchain/babylon-relayer/config"
@@ -95,7 +96,7 @@ corresponding update-client message to babylon_chain_name.`,
 	}
 
 	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
-	cmd.Flags().String("interval", "10m", "the interval between two update-client attempts")
+	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
 	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
 
 	return cmd
@@ -164,7 +165,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
-	cmd.Flags().String("interval", "10m", "the interval between two update-client attempts")
+	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
 	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
 
 	return cmd
