@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -29,37 +30,54 @@ func (r *Relayer) createClientIfNotExist(
 	ctx context.Context,
 	src *relayer.Chain,
 	dst *relayer.Chain,
-	path *relayer.Path,
-	memo string) error {
-
+	memo string,
+	numRetries uint,
+) error {
 	// query the latest heights on src and dst
-	srch, dsth, err := relayer.QueryLatestHeights(ctx, src, dst)
-	if err != nil {
-		return fmt.Errorf("failed to query latest heights: %w", err)
+	// retry here in case the CZ endpoint becomes unstable
+	var srch, dsth int64
+	if err := retry.Do(func() error {
+		var err error
+		srch, dsth, err = relayer.QueryLatestHeights(ctx, src, dst)
+		if err != nil {
+			return fmt.Errorf("failed to query latest heights: %w", err)
+		}
+		return nil
+	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr); err != nil {
+		return err
 	}
 
 	// check whether the dst light client exists on src at the latest height
 	// if err is nil, then the client exists, return directly
-	if _, err := src.ChainProvider.QueryClientState(ctx, srch, dst.ClientID()); err == nil {
-		r.logger.Debug(
+	if _, err := src.ChainProvider.QueryClientState(ctx, srch, src.PathEnd.ClientID); err == nil {
+		r.logger.Info(
 			"the light client already exists. Skip creating the light client.",
 			zap.String("src_chain_id", src.ChainID()),
 			zap.String("dst_chain_id", dst.ChainID()),
+			zap.String("dst_client_id", src.PathEnd.ClientID),
 		)
 		return nil
 	}
 
 	// if the code reaches here, then it means the client does not exist
 	// we need to create a new one
-	r.logger.Debug(
+	r.logger.Info(
 		"the light client does not exist. Creating a new light client.",
 		zap.String("src_chain_id", src.ChainID()),
 		zap.String("dst_chain_id", dst.ChainID()),
+		zap.String("dst_client_id", src.PathEnd.ClientID),
 	)
 
 	// Query the light signed headers for src & dst at the heights srch & dsth
-	srcUpdateHeader, dstUpdateHeader, err := relayer.QueryIBCHeaders(ctx, src, dst, srch, dsth)
-	if err != nil {
+	var srcUpdateHeader, dstUpdateHeader provider.IBCHeader
+	if err := retry.Do(func() error {
+		var err error
+		srcUpdateHeader, dstUpdateHeader, err = relayer.QueryIBCHeaders(ctx, src, dst, srch, dsth)
+		if err != nil {
+			return fmt.Errorf("failed to query update headers: %w", err)
+		}
+		return nil
+	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr); err != nil {
 		return err
 	}
 
@@ -72,15 +90,22 @@ func (r *Relayer) createClientIfNotExist(
 		dst,
 		srcUpdateHeader,
 		dstUpdateHeader,
-		true,  // allowUpdateAfterExpiry
-		true,  // allowUpdateAfterMisbehaviour
-		false, // override
-		0,     // customClientTrustingPeriod
+		true, // allowUpdateAfterExpiry
+		true, // allowUpdateAfterMisbehaviour
+		true, // override
+		0,    // customClientTrustingPeriod
 		memo,
 	); err != nil {
 		return err
 	}
 	r.Unlock()
+
+	r.logger.Info(
+		"successfully created the light client",
+		zap.String("src_chain_id", src.ChainID()),
+		zap.String("dst_chain_id", dst.ChainID()),
+		zap.String("dst_client_id", src.PathEnd.ClientID),
+	)
 
 	return nil
 }
@@ -92,12 +117,18 @@ func (r *Relayer) UpdateClient(
 	src *relayer.Chain,
 	dst *relayer.Chain,
 	memo string,
+	numRetries uint,
 ) error {
-	r.Lock()
-	defer r.Unlock()
-
-	srch, dsth, err := relayer.QueryLatestHeights(ctx, src, dst)
-	if err != nil {
+	// query the latest heights on src and dst
+	var srch, dsth int64
+	if err := retry.Do(func() error {
+		var err error
+		srch, dsth, err = relayer.QueryLatestHeights(ctx, src, dst)
+		if err != nil {
+			return fmt.Errorf("failed to query latest heights: %w", err)
+		}
+		return nil
+	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr); err != nil {
 		return err
 	}
 
@@ -109,7 +140,7 @@ func (r *Relayer) UpdateClient(
 		return err
 	})
 
-	if err = eg.Wait(); err != nil {
+	if err := eg.Wait(); err != nil {
 		return err
 	}
 
@@ -118,8 +149,10 @@ func (r *Relayer) UpdateClient(
 		Dst: []provider.RelayerMessage{}, // nothing will be sent to dst chain
 	}
 
-	// Send msgs to src chain
+	// Send msgs to src chain in a thread-safe way
+	r.Lock()
 	result := clients.Send(ctx, r.logger, relayer.AsRelayMsgSender(src), relayer.AsRelayMsgSender(dst), memo)
+	r.Unlock()
 	if err := result.Error(); err != nil {
 		if result.PartiallySent() {
 			r.logger.Info(
@@ -133,7 +166,7 @@ func (r *Relayer) UpdateClient(
 	}
 
 	r.logger.Info(
-		"Clients updated",
+		"successfully updated the client",
 		zap.String("src_chain_id", src.ChainID()),
 		zap.String("src_client", src.PathEnd.ClientID),
 		zap.String("dst_chain_id", dst.ChainID()),
@@ -149,6 +182,7 @@ func (r *Relayer) KeepUpdatingClient(
 	dst *relayer.Chain,
 	memo string,
 	interval time.Duration,
+	numRetries uint,
 ) error {
 	ticker := time.NewTicker(interval)
 	r.logger.Info(
@@ -161,7 +195,7 @@ func (r *Relayer) KeepUpdatingClient(
 	)
 	for ; true; <-ticker.C {
 		// Note that UpdateClient is a thread-safe function
-		if err := r.UpdateClient(ctx, src, dst, memo); err != nil {
+		if err := r.UpdateClient(ctx, src, dst, memo, numRetries); err != nil {
 			return err
 		}
 	}
@@ -175,6 +209,7 @@ func (r *Relayer) KeepUpdatingClients(
 	chains relayer.Chains,
 	memo string,
 	interval time.Duration,
+	numRetries uint,
 ) {
 	r.logger.Info("Start relaying headers for the following chains", zap.Any("paths", paths))
 
@@ -186,7 +221,7 @@ func (r *Relayer) KeepUpdatingClients(
 			r.logger.Error(
 				"babylon not found in config",
 				zap.String("path", pathName),
-				zap.String("chain_id", path.Src.ChainID),
+				zap.String("src_chain_id", path.Src.ChainID),
 				zap.Error(err),
 			)
 			continue
@@ -197,7 +232,7 @@ func (r *Relayer) KeepUpdatingClients(
 				"key not found on Babylon chain, skipping this path",
 				zap.String("path", pathName),
 				zap.String("key", babylonChain.ChainProvider.Key()),
-				zap.String("chain_id", babylonChain.ChainID()),
+				zap.String("src_chain_id", babylonChain.ChainID()),
 			)
 			continue
 		}
@@ -208,7 +243,7 @@ func (r *Relayer) KeepUpdatingClients(
 			r.logger.Error(
 				"CZ chain not found in config",
 				zap.String("path", pathName),
-				zap.String("chain_id", path.Dst.ChainID),
+				zap.String("dst_chain_id", path.Dst.ChainID),
 				zap.Error(err),
 			)
 			continue
@@ -221,25 +256,31 @@ func (r *Relayer) KeepUpdatingClients(
 		copiedBabylonChain.PathEnd = path.End(babylonChain.ChainID())
 		copiedCZChain.PathEnd = path.End(czChain.ChainID())
 
-		// ensure the CZ chain light client exists on Babylon
-		if err := r.createClientIfNotExist(ctx, &copiedBabylonChain, &copiedCZChain, path, memo); err != nil {
-			r.logger.Error(
-				"failed to ensure CZ light client exsits on Babylon",
-				zap.String("chain_id", copiedCZChain.ChainID()),
-				zap.Error(err),
-			)
-			continue
-		}
-
-		// start updating the czChain light client on babylonChain
+		// ensure the czChain light client exists, then start updating the czChain light client on babylonChain
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, memo, interval); err != nil {
+			// ensure the CZ chain light client exists on Babylon
+			if err := r.createClientIfNotExist(ctx, &copiedBabylonChain, &copiedCZChain, memo, numRetries); err != nil {
+				r.logger.Error(
+					"failed to ensure CZ light client exists on Babylon. Stop relaying the chain",
+					zap.String("src_client_id", copiedBabylonChain.PathEnd.ClientID),
+					zap.String("src_chain_id", copiedBabylonChain.ChainID()),
+					zap.String("dst_client_id", copiedCZChain.PathEnd.ClientID),
+					zap.String("dst_chain_id", copiedCZChain.ChainID()),
+					zap.Error(err),
+				)
+				return
+			}
+			// keep updating the client
+			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, memo, interval, numRetries); err != nil {
 				// NOTE: we don't panic here since the relayer should keep relaying other chains
 				r.logger.Error(
-					"failed to update CZ chain",
-					zap.String("chain_id", copiedCZChain.ChainID()),
+					"failed to update CZ chain. Stop relaying the chain",
+					zap.String("src_client_id", copiedBabylonChain.PathEnd.ClientID),
+					zap.String("src_chain_id", copiedBabylonChain.ChainID()),
+					zap.String("dst_client_id", copiedCZChain.PathEnd.ClientID),
+					zap.String("dst_chain_id", copiedCZChain.ChainID()),
 					zap.Error(err),
 				)
 			}
