@@ -11,8 +11,16 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	// constants for creating a light client
+	trustingPeriodPercentage     = 85 // TrustingPeriodPercentage * UnbondingPeriod = TrustingPeriod
+	allowUpdateAfterExpiry       = true
+	allowUpdateAfterMisbehaviour = true
+	override                     = true
+)
+
 // createClientIfNotExist ensures that the dst light client exists on src chain
-// if not exist, the function will create a new dst light client on src chain
+// if does not exist, the function will create a new dst light client on src chain
 func (r *Relayer) createClientIfNotExist(
 	ctx context.Context,
 	src *relayer.Chain,
@@ -81,7 +89,7 @@ func (r *Relayer) createClientIfNotExist(
 	}
 	// 85% of unbonding period
 	// TODO: parameterise percentage
-	dstTrustingPeriod := dstUnbondingPeriod / 100 * 85
+	dstTrustingPeriod := dstUnbondingPeriod / 100 * trustingPeriodPercentage
 
 	// create the client on src chain, where we use default values for some fields
 	r.Lock()
@@ -91,10 +99,10 @@ func (r *Relayer) createClientIfNotExist(
 		dst,
 		srcUpdateHeader,
 		dstUpdateHeader,
-		true,              // allowUpdateAfterExpiry
-		true,              // allowUpdateAfterMisbehaviour
-		true,              // override
-		dstTrustingPeriod, // customClientTrustingPeriod
+		allowUpdateAfterExpiry,
+		allowUpdateAfterMisbehaviour,
+		override,
+		dstTrustingPeriod,
 		memo,
 	)
 	if err != nil {
@@ -112,7 +120,22 @@ func (r *Relayer) createClientIfNotExist(
 	)
 
 	// wait until client is queryable on chain
+	if err := r.waitUntilQuerable(ctx, src, dst, numRetries); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// waitUntilQuerable asks the relayer to wait until the dst light client is queryable on src chain
+func (r *Relayer) waitUntilQuerable(
+	ctx context.Context,
+	src *relayer.Chain,
+	dst *relayer.Chain,
+	numRetries uint,
+) error {
 	ticker := time.NewTicker(time.Second * 5)
+
 	for range ticker.C {
 		// query the latest heights on src and dst
 		// retry here in case the CZ endpoint becomes unstable
@@ -148,7 +171,6 @@ func (r *Relayer) createClientIfNotExist(
 			zap.String("src_chain_id", src.ChainID()),
 			zap.String("dst_chain_id", dst.ChainID()),
 			zap.String("dst_client_id", src.ClientID()),
-			zap.Error(err),
 		)
 	}
 
