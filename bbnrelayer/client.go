@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	relaydebug "github.com/babylonchain/babylon-relayer/debug"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -119,6 +120,7 @@ func (r *Relayer) KeepUpdatingClients(
 	memo string,
 	interval time.Duration,
 	numRetries uint,
+	prometheusMetrics *relaydebug.PrometheusMetrics,
 ) {
 	r.logger.Info("Start relaying headers for the following chains", zap.Any("paths", paths))
 

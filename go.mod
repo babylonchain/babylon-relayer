@@ -3,11 +3,11 @@ module github.com/babylonchain/babylon-relayer
 go 1.19
 
 require (
+	github.com/avast/retry-go/v4 v4.3.1
 	github.com/cosmos/relayer/v2 v2.2.0-rc3
 	github.com/jsternberg/zap-logfmt v1.3.0
 	github.com/spf13/cobra v1.6.1
 	go.uber.org/zap v1.23.0
-	golang.org/x/sync v0.1.0
 	golang.org/x/term v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -26,7 +26,6 @@ require (
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
 	github.com/InjectiveLabs/sdk-go v1.42.4-lens // indirect
 	github.com/armon/go-metrics v0.4.0 // indirect
-	github.com/avast/retry-go/v4 v4.3.1 // indirect
 	github.com/aws/aws-sdk-go v1.40.45 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
@@ -142,6 +141,7 @@ require (
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/net v0.1.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
+	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
