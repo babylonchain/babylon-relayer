@@ -91,6 +91,9 @@ corresponding update-client message to babylon_chain_name.`,
 				return err
 			}
 
+			// initialise prometheus registry
+			metrics := relaydebug.NewPrometheusMetrics()
+
 			// start debug server with prometheus metrics
 			debugAddr, err := cmd.Flags().GetString("debug-addr")
 			if err != nil {
@@ -103,10 +106,9 @@ corresponding update-client message to babylon_chain_name.`,
 			}
 			debugServerLogger := logger.With(zap.String("sys", "debughttp"))
 			debugServerLogger.Info("Debug server listening", zap.String("addr", debugAddr))
-			relaydebug.StartDebugServer(cmd.Context(), debugServerLogger, ln)
-			prometheusMetrics := relaydebug.NewPrometheusMetrics()
+			relaydebug.StartDebugServer(cmd.Context(), debugServerLogger, ln, metrics)
 
-			relayer := bbnrelayer.New(logger, prometheusMetrics)
+			relayer := bbnrelayer.New(logger, metrics)
 
 			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval, numRetries)
 		},

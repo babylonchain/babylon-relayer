@@ -61,6 +61,9 @@ func keepUpdatingClientsCmd() *cobra.Command {
 				return err
 			}
 
+			// initialise prometheus registry
+			metrics := relaydebug.NewPrometheusMetrics()
+
 			// start debug server with prometheus metrics
 			debugAddr, err := cmd.Flags().GetString("debug-addr")
 			if err != nil {
@@ -73,14 +76,13 @@ func keepUpdatingClientsCmd() *cobra.Command {
 			}
 			debugServerLogger := logger.With(zap.String("sys", "debughttp"))
 			debugServerLogger.Info("Debug server listening", zap.String("addr", debugAddr))
-			relaydebug.StartDebugServer(cmd.Context(), debugServerLogger, ln)
-			prometheusMetrics := relaydebug.NewPrometheusMetrics()
+			relaydebug.StartDebugServer(cmd.Context(), debugServerLogger, ln, metrics)
 
 			// we want the program to exit only after all go routines have finished
 			var wg sync.WaitGroup
 
 			// start the relayer for all paths in cfg.Paths
-			relayer := bbnrelayer.New(logger, prometheusMetrics)
+			relayer := bbnrelayer.New(logger, metrics)
 			relayer.KeepUpdatingClients(cmd.Context(), &wg, cfg.Paths, cfg.Chains, memo, interval, numRetries)
 
 			// Note that this function is executed inside `root.go`'s `Execute()` function,

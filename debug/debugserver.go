@@ -14,7 +14,7 @@ import (
 // accepting connections on the given listener.
 // Any HTTP logging will be written at info level to the given logger.
 // The server will be forcefully shut down when ctx finishes.
-func StartDebugServer(ctx context.Context, log *zap.Logger, ln net.Listener) {
+func StartDebugServer(ctx context.Context, log *zap.Logger, ln net.Listener, metrics *PrometheusMetrics) {
 	// Although we could just import net/http/pprof and rely on the default global server,
 	// we may want many instances of this in test,
 	// and we will probably want more endpoints as time goes on,
@@ -33,7 +33,8 @@ func StartDebugServer(ctx context.Context, log *zap.Logger, ln net.Listener) {
 	mux.Handle("/", http.RedirectHandler("/debug/pprof", http.StatusSeeOther))
 
 	// Serve prometheus metrics
-	mux.Handle("/metrics", promhttp.Handler())
+	promHandler := promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{Registry: metrics.Registry})
+	mux.Handle("/metrics", promHandler)
 
 	srv := &http.Server{
 		Handler:  mux,

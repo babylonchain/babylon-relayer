@@ -18,7 +18,7 @@ func NewPrometheusMetrics() *PrometheusMetrics {
 	chainLabels := []string{"src_chain", "dst_chain"}
 	registry := prometheus.NewRegistry()
 	registerer := promauto.With(registry)
-	return &PrometheusMetrics{
+	metrics := &PrometheusMetrics{
 		Registry: registry,
 		RelayedHeadersCounter: registerer.NewCounterVec(prometheus.CounterOpts{
 			Name: "cosmos_relayer_relayed_headers",
@@ -37,4 +37,5 @@ func NewPrometheusMetrics() *PrometheusMetrics {
 			Help: "The total number of chains that are failed to be relayed",
 		}, chainLabels),
 	}
+	return metrics
 }
