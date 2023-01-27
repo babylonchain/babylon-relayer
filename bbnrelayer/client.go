@@ -93,8 +93,8 @@ func (r *Relayer) KeepUpdatingClient(
 	memo string,
 	interval time.Duration,
 	numRetries uint,
+	prometheusMetrics *relaydebug.PrometheusMetrics,
 ) error {
-	ticker := time.NewTicker(interval)
 	r.logger.Info(
 		"Keep updating client",
 		zap.String("src_chain_id", src.ChainID()),
@@ -103,10 +103,27 @@ func (r *Relayer) KeepUpdatingClient(
 		zap.String("dst_client", dst.PathEnd.ClientID),
 		zap.Duration("interval", interval),
 	)
+	prometheusMetrics.RelayedChainsCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+
+	ticker := time.NewTicker(interval)
 	for ; true; <-ticker.C {
+		prometheusMetrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+
 		// Note that UpdateClient is a thread-safe function
 		if err := r.UpdateClient(ctx, src, dst, memo, numRetries); err != nil {
-			return err
+			r.logger.Error(
+				"Failed to update client",
+				zap.String("src_chain_id", src.ChainID()),
+				zap.String("src_client", src.PathEnd.ClientID),
+				zap.String("dst_chain_id", dst.ChainID()),
+				zap.String("dst_client", dst.PathEnd.ClientID),
+				zap.Error(err),
+			)
+			prometheusMetrics.FailedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+
+			// NOTE: the for loop continues here since it's possible that
+			// the endpoint of dst chain is temporarily unavailable
+			// TODO: distinguish unrecoverable errors
 		}
 	}
 	return nil
@@ -135,17 +152,19 @@ func (r *Relayer) KeepUpdatingClients(
 				zap.String("src_chain_id", path.Src.ChainID),
 				zap.Error(err),
 			)
-			continue
+			// non of the chains can be relayed without Babylon
+			return
 		}
 		// ensure that key in babylonChain chain exists
 		if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
 			r.logger.Error(
-				"key not found on Babylon chain, skipping this path",
+				"key not found on Babylon chain",
 				zap.String("path", pathName),
 				zap.String("key", babylonChain.ChainProvider.Key()),
 				zap.String("src_chain_id", babylonChain.ChainID()),
 			)
-			continue
+			// non of the chains can be relayed without a keyring of Babylon
+			return
 		}
 
 		// get CZ object from config
@@ -184,7 +203,7 @@ func (r *Relayer) KeepUpdatingClients(
 				return
 			}
 			// keep updating the client
-			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, memo, interval, numRetries); err != nil {
+			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, memo, interval, numRetries, prometheusMetrics); err != nil {
 				// NOTE: we don't panic here since the relayer should keep relaying other chains
 				r.logger.Error(
 					"failed to update CZ chain. Stop relaying the chain",
@@ -194,6 +213,7 @@ func (r *Relayer) KeepUpdatingClients(
 					zap.String("dst_chain_id", copiedCZChain.ChainID()),
 					zap.Error(err),
 				)
+				prometheusMetrics.FailedChainsCounter.WithLabelValues(copiedBabylonChain.ChainID(), copiedCZChain.ChainID()).Inc()
 			}
 		}()
 	}

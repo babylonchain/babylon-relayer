@@ -14,8 +14,8 @@ type PrometheusMetrics struct {
 }
 
 func NewPrometheusMetrics() *PrometheusMetrics {
-	headerLabels := []string{"path", "chain", "channel"}
-	chainLabels := []string{"chain"}
+	headerLabels := []string{"src_chain", "dst_chain"}
+	chainLabels := []string{"src_chain", "dst_chain"}
 	registry := prometheus.NewRegistry()
 	registerer := promauto.With(registry)
 	return &PrometheusMetrics{
