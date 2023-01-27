@@ -17,12 +17,14 @@ import (
 // It is made thread-safe to avoid account sequence mismatch errors in Cosmos SDK accounts.
 type Relayer struct {
 	sync.Mutex
-	logger *zap.Logger
+	logger  *zap.Logger
+	metrics *relaydebug.PrometheusMetrics
 }
 
-func New(logger *zap.Logger) *Relayer {
+func New(logger *zap.Logger, metrics *relaydebug.PrometheusMetrics) *Relayer {
 	return &Relayer{
-		logger: logger,
+		logger:  logger,
+		metrics: metrics,
 	}
 }
 
@@ -93,7 +95,6 @@ func (r *Relayer) KeepUpdatingClient(
 	memo string,
 	interval time.Duration,
 	numRetries uint,
-	prometheusMetrics *relaydebug.PrometheusMetrics,
 ) error {
 	r.logger.Info(
 		"Keep updating client",
@@ -103,11 +104,11 @@ func (r *Relayer) KeepUpdatingClient(
 		zap.String("dst_client", dst.PathEnd.ClientID),
 		zap.Duration("interval", interval),
 	)
-	prometheusMetrics.RelayedChainsCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+	r.metrics.RelayedChainsCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
 
 	ticker := time.NewTicker(interval)
 	for ; true; <-ticker.C {
-		prometheusMetrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+		r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
 
 		// Note that UpdateClient is a thread-safe function
 		if err := r.UpdateClient(ctx, src, dst, memo, numRetries); err != nil {
@@ -119,7 +120,7 @@ func (r *Relayer) KeepUpdatingClient(
 				zap.String("dst_client", dst.PathEnd.ClientID),
 				zap.Error(err),
 			)
-			prometheusMetrics.FailedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+			r.metrics.FailedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
 
 			// NOTE: the for loop continues here since it's possible that
 			// the endpoint of dst chain is temporarily unavailable
@@ -137,7 +138,6 @@ func (r *Relayer) KeepUpdatingClients(
 	memo string,
 	interval time.Duration,
 	numRetries uint,
-	prometheusMetrics *relaydebug.PrometheusMetrics,
 ) {
 	r.logger.Info("Start relaying headers for the following chains", zap.Any("paths", paths))
 
@@ -203,7 +203,7 @@ func (r *Relayer) KeepUpdatingClients(
 				return
 			}
 			// keep updating the client
-			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, memo, interval, numRetries, prometheusMetrics); err != nil {
+			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, memo, interval, numRetries); err != nil {
 				// NOTE: we don't panic here since the relayer should keep relaying other chains
 				r.logger.Error(
 					"failed to update CZ chain. Stop relaying the chain",
@@ -213,7 +213,7 @@ func (r *Relayer) KeepUpdatingClients(
 					zap.String("dst_chain_id", copiedCZChain.ChainID()),
 					zap.Error(err),
 				)
-				prometheusMetrics.FailedChainsCounter.WithLabelValues(copiedBabylonChain.ChainID(), copiedCZChain.ChainID()).Inc()
+				r.metrics.FailedChainsCounter.WithLabelValues(copiedBabylonChain.ChainID(), copiedCZChain.ChainID()).Inc()
 			}
 		}()
 	}

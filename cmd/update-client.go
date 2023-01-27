@@ -44,7 +44,8 @@ corresponding update-client message to babylon_chain_name.`,
 				return err
 			}
 
-			relayer := bbnrelayer.New(logger)
+			prometheusMetrics := relaydebug.NewPrometheusMetrics()
+			relayer := bbnrelayer.New(logger, prometheusMetrics)
 
 			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo, numRetries)
 		},
@@ -105,9 +106,9 @@ corresponding update-client message to babylon_chain_name.`,
 			relaydebug.StartDebugServer(cmd.Context(), debugServerLogger, ln)
 			prometheusMetrics := relaydebug.NewPrometheusMetrics()
 
-			relayer := bbnrelayer.New(logger)
+			relayer := bbnrelayer.New(logger, prometheusMetrics)
 
-			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval, numRetries, prometheusMetrics)
+			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval, numRetries)
 		},
 	}
 
