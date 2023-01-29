@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	relaydebug "github.com/babylonchain/babylon-relayer/debug"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -16,12 +17,14 @@ import (
 // It is made thread-safe to avoid account sequence mismatch errors in Cosmos SDK accounts.
 type Relayer struct {
 	sync.Mutex
-	logger *zap.Logger
+	logger  *zap.Logger
+	metrics *relaydebug.PrometheusMetrics
 }
 
-func New(logger *zap.Logger) *Relayer {
+func New(logger *zap.Logger, metrics *relaydebug.PrometheusMetrics) *Relayer {
 	return &Relayer{
-		logger: logger,
+		logger:  logger,
+		metrics: metrics,
 	}
 }
 
@@ -93,7 +96,6 @@ func (r *Relayer) KeepUpdatingClient(
 	interval time.Duration,
 	numRetries uint,
 ) error {
-	ticker := time.NewTicker(interval)
 	r.logger.Info(
 		"Keep updating client",
 		zap.String("src_chain_id", src.ChainID()),
@@ -102,10 +104,27 @@ func (r *Relayer) KeepUpdatingClient(
 		zap.String("dst_client", dst.PathEnd.ClientID),
 		zap.Duration("interval", interval),
 	)
+	r.metrics.RelayedChainsCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+
+	ticker := time.NewTicker(interval)
 	for ; true; <-ticker.C {
+		r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+
 		// Note that UpdateClient is a thread-safe function
 		if err := r.UpdateClient(ctx, src, dst, memo, numRetries); err != nil {
-			return err
+			r.logger.Error(
+				"Failed to update client",
+				zap.String("src_chain_id", src.ChainID()),
+				zap.String("src_client", src.PathEnd.ClientID),
+				zap.String("dst_chain_id", dst.ChainID()),
+				zap.String("dst_client", dst.PathEnd.ClientID),
+				zap.Error(err),
+			)
+			r.metrics.FailedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
+
+			// NOTE: the for loop continues here since it's possible that
+			// the endpoint of dst chain is temporarily unavailable
+			// TODO: distinguish unrecoverable errors
 		}
 	}
 	return nil
@@ -133,17 +152,19 @@ func (r *Relayer) KeepUpdatingClients(
 				zap.String("src_chain_id", path.Src.ChainID),
 				zap.Error(err),
 			)
-			continue
+			// non of the chains can be relayed without Babylon
+			return
 		}
 		// ensure that key in babylonChain chain exists
 		if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
 			r.logger.Error(
-				"key not found on Babylon chain, skipping this path",
+				"key not found on Babylon chain",
 				zap.String("path", pathName),
 				zap.String("key", babylonChain.ChainProvider.Key()),
 				zap.String("src_chain_id", babylonChain.ChainID()),
 			)
-			continue
+			// non of the chains can be relayed without a keyring of Babylon
+			return
 		}
 
 		// get CZ object from config
@@ -192,6 +213,7 @@ func (r *Relayer) KeepUpdatingClients(
 					zap.String("dst_chain_id", copiedCZChain.ChainID()),
 					zap.Error(err),
 				)
+				r.metrics.FailedChainsCounter.WithLabelValues(copiedBabylonChain.ChainID(), copiedCZChain.ChainID()).Inc()
 			}
 		}()
 	}
