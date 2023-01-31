@@ -11,6 +11,15 @@ FROM alpine:3.14 AS run
 # the below utilities are added for testing purposes
 RUN apk add bash curl jq
 
-COPY --from=build /work/build/babylon-relayer /usr/bin/
+# copy wrapper script
+COPY scripts/wrapper.sh /usr/bin/wrapper.sh
 
-ENTRYPOINT ["/usr/bin/babylon-relayer"]
+# Copy over binaries from the build-env
+VOLUME /app
+COPY --from=build /work/build/babylon-relayer /app/babylon-relayer
+WORKDIR /app
+
+# port for debugging server
+EXPOSE 7597
+
+ENTRYPOINT ["/usr/bin/wrapper.sh"]
