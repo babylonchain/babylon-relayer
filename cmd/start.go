@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
 	"github.com/babylonchain/babylon-relayer/config"
 	relaydebug "github.com/babylonchain/babylon-relayer/debug"
@@ -56,10 +57,13 @@ func keepUpdatingClientsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// override retry in relayer config
 			numRetries, err := cmd.Flags().GetUint("retry")
 			if err != nil {
 				return err
 			}
+			relayer.RtyAttNum = numRetries
+			relayer.RtyDel = retry.Delay(time.Second)
 
 			// initialise prometheus registry
 			metrics := relaydebug.NewPrometheusMetrics()
