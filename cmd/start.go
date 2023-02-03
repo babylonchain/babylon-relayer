@@ -63,6 +63,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 				return err
 			}
 			relayer.RtyAttNum = numRetries
+			relayer.RtyAtt = retry.Attempts(relayer.RtyAttNum)
 			relayer.RtyDel = retry.Delay(time.Second)
 
 			// initialise prometheus registry
@@ -100,7 +101,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 
 	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
-	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
+	cmd.Flags().Uint("retry", 20, "number of retry attempts for requests")
 	cmd.Flags().String("debug-addr", "", "address for the debug server with Prometheus metrics")
 
 	return cmd
