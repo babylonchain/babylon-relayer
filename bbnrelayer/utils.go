@@ -152,6 +152,7 @@ func (r *Relayer) waitUntilQuerable(
 		}
 		// in case block at srch/dsth has not been committed yet
 		// see https://github.com/tendermint/tendermint/issues/7641
+		// TODO: remove below after bumping Tendermint to versions after https://github.com/tendermint/tendermint/pull/7642
 		srch--
 		dsth--
 

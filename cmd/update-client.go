@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
 	relaydebug "github.com/babylonchain/babylon-relayer/debug"
 	"github.com/cosmos/relayer/v2/relayer"
@@ -86,10 +87,14 @@ corresponding update-client message to babylon_chain_name.`,
 			if err != nil {
 				return err
 			}
+			// override retry in relayer config
 			numRetries, err := cmd.Flags().GetUint("retry")
 			if err != nil {
 				return err
 			}
+			relayer.RtyAttNum = numRetries
+			relayer.RtyAtt = retry.Attempts(relayer.RtyAttNum)
+			relayer.RtyDel = retry.Delay(time.Second)
 
 			// initialise prometheus registry
 			metrics := relaydebug.NewPrometheusMetrics()
@@ -116,7 +121,7 @@ corresponding update-client message to babylon_chain_name.`,
 
 	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
-	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
+	cmd.Flags().Uint("retry", 20, "number of retry attempts for requests")
 	cmd.Flags().String("debug-addr", "", "address for the debug server with Prometheus metrics")
 
 	return cmd
