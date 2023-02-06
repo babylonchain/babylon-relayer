@@ -8,6 +8,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
+	"github.com/babylonchain/babylon-relayer/config"
 	relaydebug "github.com/babylonchain/babylon-relayer/debug"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/spf13/cobra"
@@ -26,7 +27,17 @@ corresponding update-client message to babylon_chain_name.`,
 		Args:    withUsage(cobra.ExactArgs(3)),
 		Example: strings.TrimSpace(fmt.Sprintf(`$ %s update-client babylon osmosis demo-path`, AppName)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, args)
+			// load config
+			homePath, err := cmd.Flags().GetString("home")
+			if err != nil {
+				return err
+			}
+			cfg, err := config.LoadConfig(homePath, cmd)
+			if err != nil {
+				return err
+			}
+
+			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, cfg, args)
 			if err != nil {
 				return err
 			}
@@ -46,7 +57,7 @@ corresponding update-client message to babylon_chain_name.`,
 			}
 
 			prometheusMetrics := relaydebug.NewPrometheusMetrics()
-			relayer := bbnrelayer.New(logger, prometheusMetrics)
+			relayer := bbnrelayer.New(cfg, logger, prometheusMetrics)
 
 			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo, numRetries)
 		},
@@ -68,7 +79,17 @@ corresponding update-client message to babylon_chain_name.`,
 		Args:    withUsage(cobra.ExactArgs(3)),
 		Example: strings.TrimSpace(fmt.Sprintf(`$ %s keep-update-client babylon osmosis demo-path`, AppName)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, args)
+			// load config
+			homePath, err := cmd.Flags().GetString("home")
+			if err != nil {
+				return err
+			}
+			cfg, err := config.LoadConfig(homePath, cmd)
+			if err != nil {
+				return err
+			}
+
+			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, cfg, args)
 			if err != nil {
 				return err
 			}
@@ -113,7 +134,7 @@ corresponding update-client message to babylon_chain_name.`,
 			debugServerLogger.Info("Debug server listening", zap.String("addr", debugAddr))
 			relaydebug.StartDebugServer(cmd.Context(), debugServerLogger, ln, metrics)
 
-			relayer := bbnrelayer.New(logger, metrics)
+			relayer := bbnrelayer.New(cfg, logger, metrics)
 
 			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval, numRetries)
 		},

@@ -87,7 +87,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 			var wg sync.WaitGroup
 
 			// start the relayer for all paths in cfg.Paths
-			relayer := bbnrelayer.New(logger, metrics)
+			relayer := bbnrelayer.New(cfg, logger, metrics)
 			relayer.KeepUpdatingClients(cmd.Context(), &wg, cfg.Paths, cfg.Chains, memo, interval, numRetries)
 
 			// Note that this function is executed inside `root.go`'s `Execute()` function,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	relaydebug "github.com/babylonchain/babylon-relayer/debug"
+	relayercmd "github.com/cosmos/relayer/v2/cmd"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -17,12 +18,14 @@ import (
 // It is made thread-safe to avoid account sequence mismatch errors in Cosmos SDK accounts.
 type Relayer struct {
 	sync.Mutex
+	cfg     *relayercmd.Config
 	logger  *zap.Logger
 	metrics *relaydebug.PrometheusMetrics
 }
 
-func New(logger *zap.Logger, metrics *relaydebug.PrometheusMetrics) *Relayer {
+func New(cfg *relayercmd.Config, logger *zap.Logger, metrics *relaydebug.PrometheusMetrics) *Relayer {
 	return &Relayer{
+		cfg:     cfg,
 		logger:  logger,
 		metrics: metrics,
 	}
