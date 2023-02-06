@@ -18,16 +18,18 @@ import (
 // It is made thread-safe to avoid account sequence mismatch errors in Cosmos SDK accounts.
 type Relayer struct {
 	sync.Mutex
-	cfg     *relayercmd.Config
-	logger  *zap.Logger
-	metrics *relaydebug.PrometheusMetrics
+	homePath string
+	cfg      *relayercmd.Config
+	logger   *zap.Logger
+	metrics  *relaydebug.PrometheusMetrics
 }
 
-func New(cfg *relayercmd.Config, logger *zap.Logger, metrics *relaydebug.PrometheusMetrics) *Relayer {
+func New(homePath string, cfg *relayercmd.Config, logger *zap.Logger, metrics *relaydebug.PrometheusMetrics) *Relayer {
 	return &Relayer{
-		cfg:     cfg,
-		logger:  logger,
-		metrics: metrics,
+		homePath: homePath,
+		cfg:      cfg,
+		logger:   logger,
+		metrics:  metrics,
 	}
 }
 
@@ -177,9 +179,10 @@ func (r *Relayer) KeepUpdatingClients(
 			continue
 		}
 
-		// copy the objects of two chains to prevent them from sharing the same PathEnd
+		// copy the objects to prevent them from sharing the same PathEnd
 		copiedBabylonChain := *babylonChain
 		copiedCZChain := *czChain
+		copiedPathName := pathName
 		// set path end for two chains
 		copiedBabylonChain.PathEnd = path.End(babylonChain.ChainID())
 		copiedCZChain.PathEnd = path.End(czChain.ChainID())
@@ -189,7 +192,7 @@ func (r *Relayer) KeepUpdatingClients(
 		go func() {
 			defer wg.Done()
 			// ensure the CZ chain light client exists on Babylon
-			if err := r.createClientIfNotExist(ctx, &copiedBabylonChain, &copiedCZChain, numRetries); err != nil {
+			if err := r.createClientIfNotExist(ctx, &copiedBabylonChain, &copiedCZChain, copiedPathName, numRetries); err != nil {
 				r.logger.Error(
 					"failed to ensure CZ light client exists on Babylon. Stop relaying the chain",
 					zap.String("src_client_id", copiedBabylonChain.PathEnd.ClientID),
