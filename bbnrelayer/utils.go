@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/babylonchain/babylon-relayer/config"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -25,7 +26,7 @@ func (r *Relayer) createClientIfNotExist(
 	ctx context.Context,
 	src *relayer.Chain,
 	dst *relayer.Chain,
-	memo string,
+	pathName string,
 	numRetries uint,
 ) error {
 	// query the latest heights on src and dst
@@ -103,13 +104,14 @@ func (r *Relayer) createClientIfNotExist(
 		allowUpdateAfterMisbehaviour,
 		override,
 		dstTrustingPeriod,
-		memo,
+		r.cfg.Global.Memo,
 	)
 	if err != nil {
 		return err
 	}
 	r.Unlock()
 
+	// assign clientID to source path end
 	src.PathEnd.ClientID = clientID
 
 	r.logger.Info(
@@ -123,6 +125,11 @@ func (r *Relayer) createClientIfNotExist(
 	if err := r.waitUntilQuerable(ctx, src, dst, numRetries); err != nil {
 		return err
 	}
+
+	// the client is now created and queryable
+	// writes the config with this client ID back to config file
+	r.cfg.Paths[pathName].Src.ClientID = clientID
+	config.OverwriteConfig(r.cfg, r.homePath)
 
 	return nil
 }

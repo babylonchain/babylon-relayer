@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/babylonchain/babylon-relayer/config"
+	relayercmd "github.com/cosmos/relayer/v2/cmd"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -33,17 +34,7 @@ func lineBreakCommand() *cobra.Command {
 
 // getLoggerAndPathEnds is a helper function that retrieves the logger, babylonChain and czChain
 // from the given cmd and args
-func getLoggerAndPathEnds(cmd *cobra.Command, args []string) (*zap.Logger, *relayer.Chain, *relayer.Chain, error) {
-	// load config
-	homePath, err := cmd.Flags().GetString("home")
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	cfg, err := config.LoadConfig(homePath, cmd)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
+func getLoggerAndPathEnds(cmd *cobra.Command, cfg *relayercmd.Config, args []string) (*zap.Logger, *relayer.Chain, *relayer.Chain, error) {
 	// construct logger
 	logFormat, err := cmd.Flags().GetString("log-format")
 	if err != nil {

@@ -49,10 +49,6 @@ func keepUpdatingClientsCmd() *cobra.Command {
 			}
 
 			// retrieve necessary flags
-			memo, err := cmd.Flags().GetString("memo")
-			if err != nil {
-				return err
-			}
 			interval, err := cmd.Flags().GetDuration("interval")
 			if err != nil {
 				return err
@@ -87,8 +83,8 @@ func keepUpdatingClientsCmd() *cobra.Command {
 			var wg sync.WaitGroup
 
 			// start the relayer for all paths in cfg.Paths
-			relayer := bbnrelayer.New(logger, metrics)
-			relayer.KeepUpdatingClients(cmd.Context(), &wg, cfg.Paths, cfg.Chains, memo, interval, numRetries)
+			relayer := bbnrelayer.New(homePath, cfg, logger, metrics)
+			relayer.KeepUpdatingClients(cmd.Context(), &wg, interval, numRetries)
 
 			// Note that this function is executed inside `root.go`'s `Execute()` function,
 			// which keeps the program to be alive until being interrupted.
@@ -99,7 +95,6 @@ func keepUpdatingClientsCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
 	cmd.Flags().Uint("retry", 20, "number of retry attempts for requests")
 	cmd.Flags().String("debug-addr", "", "address for the debug server with Prometheus metrics")
