@@ -13,6 +13,7 @@ import (
 
 // OverwriteConfig writes the given cfg back to the config gile w.r.t. the homePath
 // the function is thread-safe
+// (adapted from https://github.com/cosmos/relayer/blob/v2.2.0/cmd/appstate.go)
 func OverwriteConfig(cfg *relayercmd.Config, homePath string) error {
 	cfgPath := path.Join(homePath, "config", "config.yaml")
 	if _, err := os.Stat(cfgPath); err != nil {
