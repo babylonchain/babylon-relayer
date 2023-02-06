@@ -126,7 +126,8 @@ func (r *Relayer) createClientIfNotExist(
 		return err
 	}
 
-	// the client is created successfully, overwrite config with this client ID
+	// the client is now created and queryable
+	// writes the config with this client ID back to config file
 	r.cfg.Paths[pathName].Src.ClientID = clientID
 	config.OverwriteConfig(r.cfg, r.homePath)
 
