@@ -25,7 +25,6 @@ func (r *Relayer) createClientIfNotExist(
 	ctx context.Context,
 	src *relayer.Chain,
 	dst *relayer.Chain,
-	memo string,
 	numRetries uint,
 ) error {
 	// query the latest heights on src and dst
@@ -103,7 +102,7 @@ func (r *Relayer) createClientIfNotExist(
 		allowUpdateAfterMisbehaviour,
 		override,
 		dstTrustingPeriod,
-		memo,
+		r.cfg.Global.Memo,
 	)
 	if err != nil {
 		return err

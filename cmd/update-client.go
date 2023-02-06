@@ -47,10 +47,6 @@ corresponding update-client message to babylon_chain_name.`,
 				return fmt.Errorf("key %s not found on babylonChain chain %s", babylonChain.ChainProvider.Key(), babylonChain.ChainID())
 			}
 
-			memo, err := cmd.Flags().GetString("memo")
-			if err != nil {
-				return err
-			}
 			numRetries, err := cmd.Flags().GetUint("retry")
 			if err != nil {
 				return err
@@ -59,11 +55,10 @@ corresponding update-client message to babylon_chain_name.`,
 			prometheusMetrics := relaydebug.NewPrometheusMetrics()
 			relayer := bbnrelayer.New(cfg, logger, prometheusMetrics)
 
-			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo, numRetries)
+			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, numRetries)
 		},
 	}
 
-	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
 
 	return cmd
@@ -100,10 +95,6 @@ corresponding update-client message to babylon_chain_name.`,
 			}
 
 			// retrieve necessary flags
-			memo, err := cmd.Flags().GetString("memo")
-			if err != nil {
-				return err
-			}
 			interval, err := cmd.Flags().GetDuration("interval")
 			if err != nil {
 				return err
@@ -136,11 +127,10 @@ corresponding update-client message to babylon_chain_name.`,
 
 			relayer := bbnrelayer.New(cfg, logger, metrics)
 
-			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval, numRetries)
+			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, interval, numRetries)
 		},
 	}
 
-	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
 	cmd.Flags().Uint("retry", 20, "number of retry attempts for requests")
 	cmd.Flags().String("debug-addr", "", "address for the debug server with Prometheus metrics")

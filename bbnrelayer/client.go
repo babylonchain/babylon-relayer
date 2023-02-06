@@ -37,7 +37,6 @@ func (r *Relayer) UpdateClient(
 	ctx context.Context,
 	src *relayer.Chain,
 	dst *relayer.Chain,
-	memo string,
 	numRetries uint,
 ) error {
 	// query the latest heights on src and dst
@@ -66,7 +65,7 @@ func (r *Relayer) UpdateClient(
 
 	// Send msgs to src chain in a thread-safe way
 	r.Lock()
-	result := clients.Send(ctx, r.logger, relayer.AsRelayMsgSender(src), relayer.AsRelayMsgSender(dst), memo)
+	result := clients.Send(ctx, r.logger, relayer.AsRelayMsgSender(src), relayer.AsRelayMsgSender(dst), r.cfg.Global.Memo)
 	r.Unlock()
 	if err := result.Error(); err != nil {
 		if result.PartiallySent() {
@@ -95,7 +94,6 @@ func (r *Relayer) KeepUpdatingClient(
 	ctx context.Context,
 	src *relayer.Chain,
 	dst *relayer.Chain,
-	memo string,
 	interval time.Duration,
 	numRetries uint,
 ) error {
@@ -114,7 +112,7 @@ func (r *Relayer) KeepUpdatingClient(
 		r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
 
 		// Note that UpdateClient is a thread-safe function
-		if err := r.UpdateClient(ctx, src, dst, memo, numRetries); err != nil {
+		if err := r.UpdateClient(ctx, src, dst, numRetries); err != nil {
 			r.logger.Error(
 				"Failed to update client",
 				zap.String("src_chain_id", src.ChainID()),
@@ -136,18 +134,15 @@ func (r *Relayer) KeepUpdatingClient(
 func (r *Relayer) KeepUpdatingClients(
 	ctx context.Context,
 	wg *sync.WaitGroup,
-	paths relayer.Paths,
-	chains relayer.Chains,
-	memo string,
 	interval time.Duration,
 	numRetries uint,
 ) {
-	r.logger.Info("Start relaying headers for the following chains", zap.Any("paths", paths))
+	r.logger.Info("Start relaying headers for the following chains", zap.Any("paths", r.cfg.Paths))
 
 	// for each CZ, start a KeepUpdatingClient go routine
-	for pathName, path := range paths {
+	for pathName, path := range r.cfg.Paths {
 		// get babylonChain object from config
-		babylonChain, err := chains.Get(path.Src.ChainID)
+		babylonChain, err := r.cfg.Chains.Get(path.Src.ChainID)
 		if err != nil {
 			r.logger.Error(
 				"babylon not found in config",
@@ -171,7 +166,7 @@ func (r *Relayer) KeepUpdatingClients(
 		}
 
 		// get CZ object from config
-		czChain, err := chains.Get(path.Dst.ChainID)
+		czChain, err := r.cfg.Chains.Get(path.Dst.ChainID)
 		if err != nil {
 			r.logger.Error(
 				"CZ chain not found in config",
@@ -194,7 +189,7 @@ func (r *Relayer) KeepUpdatingClients(
 		go func() {
 			defer wg.Done()
 			// ensure the CZ chain light client exists on Babylon
-			if err := r.createClientIfNotExist(ctx, &copiedBabylonChain, &copiedCZChain, memo, numRetries); err != nil {
+			if err := r.createClientIfNotExist(ctx, &copiedBabylonChain, &copiedCZChain, numRetries); err != nil {
 				r.logger.Error(
 					"failed to ensure CZ light client exists on Babylon. Stop relaying the chain",
 					zap.String("src_client_id", copiedBabylonChain.PathEnd.ClientID),
@@ -206,7 +201,7 @@ func (r *Relayer) KeepUpdatingClients(
 				return
 			}
 			// keep updating the client
-			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, memo, interval, numRetries); err != nil {
+			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, interval, numRetries); err != nil {
 				// NOTE: we don't panic here since the relayer should keep relaying other chains
 				r.logger.Error(
 					"failed to update CZ chain. Stop relaying the chain",
