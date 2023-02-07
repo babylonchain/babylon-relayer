@@ -6,7 +6,6 @@ require (
 	github.com/avast/retry-go/v4 v4.3.2
 	github.com/cosmos/relayer/v2 v2.2.0
 	github.com/jsternberg/zap-logfmt v1.3.0
-	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b
 	github.com/prometheus/client_golang v1.12.2
 	github.com/spf13/cobra v1.6.1
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
@@ -94,6 +93,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
+	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
