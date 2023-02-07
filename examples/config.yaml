@@ -39,8 +39,8 @@ chains:
     juno:
         type: cosmos
         value:
-            chain-id: uni-5
-            rpc-addr: https://rpc.uni.junonetwork.io:443
+            chain-id: uni-6
+            rpc-addr: https://uni-rpc.reece.sh:443
             keyring-backend: test
             timeout: 10s
     osmosis:
@@ -99,7 +99,7 @@ paths:
         src:
             chain-id: bbn-demo1
         dst:
-            chain-id: uni-5
+            chain-id: uni-6
         src-channel-filter:
             rule: ""
             channel-list: []
