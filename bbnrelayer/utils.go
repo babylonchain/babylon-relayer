@@ -3,12 +3,14 @@ package bbnrelayer
 import (
 	"context"
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon-relayer/config"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
+	"github.com/juju/fslock"
 	"go.uber.org/zap"
 )
 
@@ -93,23 +95,27 @@ func (r *Relayer) createClientIfNotExist(
 	dstTrustingPeriod := dstUnbondingPeriod / 100 * trustingPeriodPercentage
 
 	// create the client on src chain, where we use default values for some fields
-	r.Lock()
-	clientID, err := relayer.CreateClient(
-		ctx,
-		src,
-		dst,
-		srcUpdateHeader,
-		dstUpdateHeader,
-		allowUpdateAfterExpiry,
-		allowUpdateAfterMisbehaviour,
-		override,
-		dstTrustingPeriod,
-		r.cfg.Global.Memo,
-	)
+	var clientID string
+	krErr := r.accessKeyWithLock(func() {
+		clientID, err = relayer.CreateClient(
+			ctx,
+			src,
+			dst,
+			srcUpdateHeader,
+			dstUpdateHeader,
+			allowUpdateAfterExpiry,
+			allowUpdateAfterMisbehaviour,
+			override,
+			dstTrustingPeriod,
+			r.cfg.Global.Memo,
+		)
+	})
+	if krErr != nil {
+		return krErr
+	}
 	if err != nil {
 		return err
 	}
-	r.Unlock()
 
 	// assign clientID to source path end
 	src.PathEnd.ClientID = clientID
@@ -180,6 +186,28 @@ func (r *Relayer) waitUntilQuerable(
 			zap.String("dst_chain_id", dst.ChainID()),
 			zap.String("dst_client_id", src.ClientID()),
 		)
+	}
+
+	return nil
+}
+
+// accessKeyWithLock triggers a function that access key ring while acquiring
+// the file system lock, in order to remain thread-safe when multiple concurrent
+// relayers are running on the same machine and accessing the same keyring
+func (r *Relayer) accessKeyWithLock(accessFunc func()) error {
+	// use lock file to guard concurrent access to config.yaml
+	lockFilePath := path.Join(r.homePath, "keys", "keys.lock")
+	lock := fslock.New(lockFilePath)
+	if err := lock.Lock(); err != nil {
+		return fmt.Errorf("failed to acquire file system lock (%s): %w", lockFilePath, err)
+	}
+
+	// trigger function that access keyring
+	accessFunc()
+
+	// unlock and release access
+	if err := lock.Unlock(); err != nil {
+		return fmt.Errorf("error unlocking file system lock (%s), please manually delete", lockFilePath)
 	}
 
 	return nil
