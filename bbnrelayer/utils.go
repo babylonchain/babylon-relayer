@@ -195,7 +195,7 @@ func (r *Relayer) waitUntilQuerable(
 // the file system lock, in order to remain thread-safe when multiple concurrent
 // relayers are running on the same machine and accessing the same keyring
 func (r *Relayer) accessKeyWithLock(accessFunc func()) error {
-	// use lock file to guard concurrent access to config.yaml
+	// use lock file to guard concurrent access to the keyring
 	lockFilePath := path.Join(r.homePath, "keys", "keys.lock")
 	lock := fslock.New(lockFilePath)
 	if err := lock.Lock(); err != nil {
