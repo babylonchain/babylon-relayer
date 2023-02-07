@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path"
 	"time"
 
 	relayercmd "github.com/cosmos/relayer/v2/cmd"
@@ -15,13 +14,13 @@ import (
 // the function is thread-safe
 // (adapted from https://github.com/cosmos/relayer/blob/v2.2.0/cmd/appstate.go)
 func OverwriteConfig(cfg *relayercmd.Config, homePath string) error {
-	cfgPath := path.Join(homePath, "config", "config.yaml")
+	cfgPath := GetCfgPath(homePath)
 	if _, err := os.Stat(cfgPath); err != nil {
 		return fmt.Errorf("failed to check existence of config file at %s: %w", cfgPath, err)
 	}
 
 	// use lock file to guard concurrent access to config.yaml
-	lockFilePath := path.Join(homePath, "config", "config.lock")
+	lockFilePath := GetCfgLockPath(homePath)
 	lock := fslock.New(lockFilePath)
 	err := lock.LockWithTimeout(10 * time.Second)
 	if err != nil {
