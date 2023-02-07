@@ -4,27 +4,11 @@ global:
     memo: ""
     light-cache-size: 10
 chains:
-    akash:
-        type: cosmos
-        value:
-            key: akash-key
-            chain-id: sandbox
-            rpc-addr: http://rpc.sandbox.ny.aksh.pw:26657
-            account-prefix: akash
-            keyring-backend: test
-            gas-adjustment: 1.5
-            gas-prices: 1uakt
-            min-gas-amount: 1
-            debug: true
-            timeout: 10s
-            output-format: json
-            sign-mode: direct
-            extra-codecs: []
     babylon:
         type: cosmos
         value:
             key: babylon-key
-            chain-id: bbn-demo0
+            chain-id: bbn-demo1
             rpc-addr: http://rpc0.demo.babylonchain.io:26657
             account-prefix: bbn
             keyring-backend: test
@@ -36,119 +20,126 @@ chains:
             output-format: json
             sign-mode: direct
             extra-codecs: []
+    akash:
+        type: cosmos
+        value:
+            chain-id: sandbox
+            rpc-addr: http://rpc.sandbox.ny.aksh.pw:26657
+            keyring-backend: test
+            timeout: 10s
     injective:
         type: cosmos
         value:
-            key: injective-key
             chain-id: injective-888
             rpc-addr: http://176.9.147.152:26657
-            account-prefix: inj
             keyring-backend: test
-            gas-adjustment: 1.5
-            gas-prices: 50000000000inj
-            min-gas-amount: 1
-            debug: true
             timeout: 10s
-            output-format: json
-            sign-mode: direct
             extra-codecs:
                 - injective
     juno:
         type: cosmos
         value:
-            key: juno-key
-            chain-id: uni-5
-            rpc-addr: https://rpc.uni.junonetwork.io:443
-            account-prefix: juno
+            chain-id: uni-6
+            rpc-addr: https://uni-rpc.reece.sh:443
             keyring-backend: test
-            gas-adjustment: 1.5
-            gas-prices: 0.1ujunox
-            min-gas-amount: 1
-            debug: true
             timeout: 10s
-            output-format: json
-            sign-mode: direct
-            extra-codecs: []
     osmosis:
         type: cosmos
         value:
-            key: osmosis-key
             chain-id: osmo-test-4
             rpc-addr: https://osmosis-testnet-rpc.allthatnode.com:26657/
-            account-prefix: osmo
             keyring-backend: test
-            gas-adjustment: 1.5
-            gas-prices: 0.01uosmo
-            min-gas-amount: 1
-            debug: true
             timeout: 10s
-            output-format: json
-            sign-mode: direct
-            extra-codecs: []
     secret:
         type: cosmos
         value:
-            key: secret-key
             chain-id: pulsar-2
             rpc-addr: https://rpc.pulsar.scrttestnet.com:443
-            account-prefix: secret
             keyring-backend: test
-            gas-adjustment: 1.5
-            gas-prices: 0.1uscrt
-            min-gas-amount: 1
-            debug: true
             timeout: 10s
-            output-format: json
-            sign-mode: direct
-            extra-codecs: []
+    sei:
+        type: cosmos
+        value:
+            chain-id: atlantic-1
+            rpc-addr: https://rpc-sei-ia.cosmosia.notional.ventures:443
+            keyring-backend: test
+            timeout: 10s
+    stargaze:
+        type: cosmos
+        value:
+            chain-id: elgafar-1
+            rpc-addr: https://rpc.elgafar-1.stargaze-apis.com:443
+            keyring-backend: test
+            timeout: 10s
+    desmos:
+        type: cosmos
+        value:
+            chain-id: morpheus-apollo-3
+            rpc-addr: https://rpc.morpheus.desmos.network:443
+            keyring-backend: test
+            timeout: 10s
 paths:
     akash:
         src:
-            chain-id: bbn-demo0
-            client-id: 07-tendermint-3
+            chain-id: bbn-demo1
         dst:
             chain-id: sandbox
-            client-id: 07-tendermint-2
         src-channel-filter:
             rule: ""
             channel-list: []
     injective:
         src:
-            chain-id: bbn-demo0
-            client-id: 07-tendermint-5
+            chain-id: bbn-demo1
         dst:
             chain-id: injective-888
-            client-id: 07-tendermint-83
         src-channel-filter:
             rule: ""
             channel-list: []
     juno:
         src:
-            chain-id: bbn-demo0
-            client-id: 07-tendermint-2
+            chain-id: bbn-demo1
         dst:
-            chain-id: uni-5
-            client-id: 07-tendermint-240
+            chain-id: uni-6
         src-channel-filter:
             rule: ""
             channel-list: []
     osmosis:
         src:
-            chain-id: bbn-demo0
-            client-id: 07-tendermint-0
+            chain-id: bbn-demo1
         dst:
             chain-id: osmo-test-4
-            client-id: 07-tendermint-3295
         src-channel-filter:
             rule: ""
             channel-list: []
     secret:
         src:
-            chain-id: bbn-demo0
-            client-id: 07-tendermint-1
+            chain-id: bbn-demo1
         dst:
             chain-id: pulsar-2
-            client-id: 07-tendermint-56
+        src-channel-filter:
+            rule: ""
+            channel-list: []
+    sei:
+        src:
+            chain-id: bbn-demo1
+        dst:
+            chain-id: atlantic-1
+        src-channel-filter:
+            rule: ""
+            channel-list: []
+    stargaze:
+        src:
+            chain-id: bbn-demo1
+        dst:
+            chain-id: elgafar-1
+        src-channel-filter:
+            rule: ""
+            channel-list: []
+    desmos:
+        src:
+            chain-id: bbn-demo1
+        dst:
+            chain-id: morpheus-apollo-3
         src-channel-filter:
             rule: ""
             channel-list: []
