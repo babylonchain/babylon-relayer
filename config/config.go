@@ -27,10 +27,6 @@ func GetCfgPath(homePath string) string {
 	return path.Join(homePath, "config", "config.yaml")
 }
 
-func GetCfgLockPath(homePath string) string {
-	return path.Join(homePath, "config", "config.lock")
-}
-
 func GetDBPath(homePath string) string {
 	return path.Join(homePath, "db", "client-ids.db")
 }
