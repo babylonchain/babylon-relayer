@@ -17,7 +17,6 @@ import (
 // Relayer is a relayer that allows to relay multiple chains concurrently.
 // It is made thread-safe to avoid account sequence mismatch errors in Cosmos SDK accounts.
 type Relayer struct {
-	sync.Mutex
 	homePath string
 	cfg      *relayercmd.Config
 	logger   *zap.Logger
@@ -66,9 +65,13 @@ func (r *Relayer) UpdateClient(
 	}
 
 	// Send msgs to src chain in a thread-safe way
-	r.Lock()
-	result := clients.Send(ctx, r.logger, relayer.AsRelayMsgSender(src), relayer.AsRelayMsgSender(dst), r.cfg.Global.Memo)
-	r.Unlock()
+	var result relayer.SendMsgsResult
+	krErr := r.accessKeyWithLock(func() {
+		result = clients.Send(ctx, r.logger, relayer.AsRelayMsgSender(src), relayer.AsRelayMsgSender(dst), r.cfg.Global.Memo)
+	})
+	if krErr != nil {
+		return err
+	}
 	if err := result.Error(); err != nil {
 		if result.PartiallySent() {
 			r.logger.Info(
