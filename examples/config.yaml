@@ -14,7 +14,7 @@ chains:
             keyring-backend: test
             gas-adjustment: 1.5
             gas-prices: 0.002ubbn
-            min-gas-amount: 0
+            min-gas-amount: 1
             debug: true
             timeout: 10s
             output-format: json
