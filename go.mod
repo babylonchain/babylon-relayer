@@ -8,6 +8,7 @@ require (
 	github.com/jsternberg/zap-logfmt v1.3.0
 	github.com/prometheus/client_golang v1.12.2
 	github.com/spf13/cobra v1.6.1
+	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	go.uber.org/zap v1.24.0
 	golang.org/x/term v0.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -123,7 +124,6 @@ require (
 	github.com/strangelove-ventures/lens v0.6.0 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
-	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
 	github.com/tendermint/tendermint v0.34.24 // indirect
 	github.com/tendermint/tm-db v0.6.7 // indirect

@@ -11,6 +11,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/juju/fslock"
+	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
 )
 
@@ -133,9 +134,23 @@ func (r *Relayer) createClientIfNotExist(
 	}
 
 	// the client is now created and queryable
-	// writes the config with this client ID back to config file
-	r.cfg.Paths[pathName].Src.ClientID = clientID
-	config.OverwriteConfig(r.cfg, r.homePath)
+	// writes the config with this client ID to DB
+	dbPath := config.GetDBPath(r.homePath)
+	db, err := leveldb.OpenFile(dbPath, nil)
+	if err != nil {
+		return fmt.Errorf("error opening LevelDB (%s): %w", dbPath, err)
+	}
+	err = db.Put([]byte(pathName), []byte(clientID), nil)
+	db.Close()
+	if err != nil {
+		return fmt.Errorf("error writing to LevelDB (%s): %w", dbPath, err)
+	}
+	r.logger.Info(
+		"successfully inserted the light client ID to LevelDB",
+		zap.String("src_chain_id", src.ChainID()),
+		zap.String("dst_chain_id", dst.ChainID()),
+		zap.String("dst_client_id", src.ClientID()),
+	)
 
 	return nil
 }
