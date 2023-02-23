@@ -22,7 +22,7 @@ jobs:
           keys:
             - go-mod-v6-{{ checksum "go.sum" }}
       - run:
-          name: Build babylond
+          name: Build
           command: make build
       - save_cache:
           key: go-mod-v6-{{ checksum "go.sum" }}
