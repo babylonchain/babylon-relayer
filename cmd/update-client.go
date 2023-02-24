@@ -88,6 +88,7 @@ corresponding update-client message to babylon_chain_name.`,
 			if err != nil {
 				return err
 			}
+			pathName := args[2]
 
 			// ensure that key in babylonChain chain exists
 			if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
@@ -127,7 +128,7 @@ corresponding update-client message to babylon_chain_name.`,
 
 			relayer := bbnrelayer.New(homePath, cfg, logger, metrics)
 
-			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, interval, numRetries)
+			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, pathName, interval, numRetries)
 		},
 	}
 
