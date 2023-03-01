@@ -42,7 +42,16 @@ func (r *Relayer) createClientIfNotExist(
 			return fmt.Errorf("failed to query latest heights: %w", err)
 		}
 		return nil
-	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr); err != nil {
+	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
+		r.logger.Info(
+			"Failed to query latest heights",
+			zap.String("src_chain_id", src.ChainID()),
+			zap.String("dst_chain_id", dst.ChainID()),
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", numRetries),
+			zap.Error(err),
+		)
+	})); err != nil {
 		return err
 	}
 	// in case block at srch/dsth has not been committed yet
@@ -82,7 +91,16 @@ func (r *Relayer) createClientIfNotExist(
 			return fmt.Errorf("failed to query update headers: %w", err)
 		}
 		return nil
-	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr); err != nil {
+	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
+		r.logger.Info(
+			"Failed to query update headers",
+			zap.String("src_chain_id", src.ChainID()),
+			zap.String("dst_chain_id", dst.ChainID()),
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", numRetries),
+			zap.Error(err),
+		)
+	})); err != nil {
 		return err
 	}
 
@@ -175,7 +193,16 @@ func (r *Relayer) waitUntilQuerable(
 				return fmt.Errorf("failed to query latest heights: %w", err)
 			}
 			return nil
-		}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr); err != nil {
+		}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
+			r.logger.Info(
+				"Failed to query latest heights",
+				zap.String("src_chain_id", src.ChainID()),
+				zap.String("dst_chain_id", dst.ChainID()),
+				zap.Uint("attempt", n+1),
+				zap.Uint("max_attempts", numRetries),
+				zap.Error(err),
+			)
+		})); err != nil {
 			return err
 		}
 		// in case block at srch/dsth has not been committed yet
