@@ -128,8 +128,6 @@ func (r *Relayer) KeepUpdatingClient(
 
 	ticker := time.NewTicker(interval)
 	for ; true; <-ticker.C {
-		r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
-
 		// Note that UpdateClient is a thread-safe function
 		if err := r.UpdateClient(ctx, src, dst, numRetries); err != nil {
 			r.logger.Error(
@@ -146,6 +144,8 @@ func (r *Relayer) KeepUpdatingClient(
 			// the endpoint of dst chain is temporarily unavailable
 			// TODO: distinguish unrecoverable errors
 		}
+
+		r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
 	}
 	return nil
 }
