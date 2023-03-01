@@ -152,9 +152,9 @@ func (r *Relayer) KeepUpdatingClient(
 			// NOTE: the for loop continues here since it's possible that
 			// the endpoint of dst chain is temporarily unavailable
 			// TODO: distinguish unrecoverable errors
+		} else {
+			r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
 		}
-
-		r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
 	}
 	return nil
 }
