@@ -49,7 +49,16 @@ func (r *Relayer) UpdateClient(
 			return fmt.Errorf("failed to query latest heights: %w", err)
 		}
 		return nil
-	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr); err != nil {
+	}, retry.Context(ctx), retry.Attempts(numRetries), relayer.RtyDel, relayer.RtyErr, retry.OnRetry(func(n uint, err error) {
+		r.logger.Info(
+			"Failed to query latest heights",
+			zap.String("src_chain_id", src.ChainID()),
+			zap.String("dst_chain_id", dst.ChainID()),
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", numRetries),
+			zap.Error(err),
+		)
+	})); err != nil {
 		return err
 	}
 
@@ -128,8 +137,6 @@ func (r *Relayer) KeepUpdatingClient(
 
 	ticker := time.NewTicker(interval)
 	for ; true; <-ticker.C {
-		r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
-
 		// Note that UpdateClient is a thread-safe function
 		if err := r.UpdateClient(ctx, src, dst, numRetries); err != nil {
 			r.logger.Error(
@@ -145,6 +152,8 @@ func (r *Relayer) KeepUpdatingClient(
 			// NOTE: the for loop continues here since it's possible that
 			// the endpoint of dst chain is temporarily unavailable
 			// TODO: distinguish unrecoverable errors
+		} else {
+			r.metrics.RelayedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
 		}
 	}
 	return nil

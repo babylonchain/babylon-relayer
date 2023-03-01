@@ -133,7 +133,7 @@ corresponding update-client message to babylon_chain_name.`,
 	}
 
 	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
-	cmd.Flags().Uint("retry", 20, "number of retry attempts for requests")
+	cmd.Flags().Uint("retry", 5, "number of retry attempts for requests")
 	cmd.Flags().String("debug-addr", "", "address for the debug server with Prometheus metrics")
 
 	return cmd
