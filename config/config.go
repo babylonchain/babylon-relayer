@@ -100,6 +100,9 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build ChainProviders: %w", err)
 		}
+		if err := prov.Init(cmd.Context()); err != nil {
+			return nil, fmt.Errorf("failed to initialize provider: %w", err)
+		}
 
 		chain := relayer.NewChain(logger, prov, debug)
 		chains[chainName] = chain
