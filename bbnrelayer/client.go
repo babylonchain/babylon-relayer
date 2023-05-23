@@ -191,8 +191,6 @@ func (r *Relayer) KeepUpdatingClients(
 		return
 	}
 
-	r.logger.Info("Start relaying headers for the following chains", zap.Any("paths", r.cfg.Paths))
-
 	// for each CZ (other than Babylon), start a KeepUpdatingClient go routine
 	for chainName, chain := range r.cfg.Chains {
 		if chainName == "babylon" {
