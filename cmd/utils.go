@@ -32,9 +32,9 @@ func lineBreakCommand() *cobra.Command {
 	return &cobra.Command{Run: func(*cobra.Command, []string) {}}
 }
 
-// getLoggerAndPathEnds is a helper function that retrieves the logger, babylonChain and czChain
+// getLoggerAndChains is a helper function that retrieves the logger, babylonChain and czChain
 // from the given cmd and args
-func getLoggerAndPathEnds(cmd *cobra.Command, cfg *relayercmd.Config, args []string) (*zap.Logger, *relayer.Chain, *relayer.Chain, error) {
+func getLoggerAndChains(cmd *cobra.Command, cfg *relayercmd.Config, args []string) (*zap.Logger, *relayer.Chain, *relayer.Chain, error) {
 	// construct logger
 	logFormat, err := cmd.Flags().GetString("log-format")
 	if err != nil {
@@ -49,7 +49,7 @@ func getLoggerAndPathEnds(cmd *cobra.Command, cfg *relayercmd.Config, args []str
 		return nil, nil, nil, err
 	}
 
-	// retrieve babylonChain chain, czChain chain, and path between babylonChain and czChain
+	// retrieve Babylon chain and CZ chain
 	babylonName := args[0]
 	babylonChain, ok := cfg.Chains[babylonName]
 	if !ok {
@@ -60,12 +60,6 @@ func getLoggerAndPathEnds(cmd *cobra.Command, cfg *relayercmd.Config, args []str
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("czChain %s not found in config. consider running `%s chains add %s`", czName, AppName, czName)
 	}
-	path, err := cfg.Paths.Get(args[2])
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	babylonChain.PathEnd = path.End(babylonChain.ChainID())
-	czChain.PathEnd = path.End(czChain.ChainID())
 
 	return logger, babylonChain, czChain, nil
 }

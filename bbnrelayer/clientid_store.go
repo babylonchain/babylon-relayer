@@ -35,8 +35,12 @@ func (r *Relayer) getClientID(chainID string) (string, error) {
 	}
 	clientID, err := db.Get([]byte(chainID), nil)
 	db.Close()
-	if err != nil {
-		return "", fmt.Errorf("error writing to LevelDB (%s): %w", dbPath, err)
+
+	// distinguish not found and other errors
+	if err == leveldb.ErrNotFound {
+		return "", nil
+	} else if err != nil {
+		return "", fmt.Errorf("error reading LevelDB (%s): %w", dbPath, err)
 	}
 
 	return string(clientID), nil

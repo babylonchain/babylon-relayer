@@ -32,7 +32,7 @@ func New(homePath string, cfg *relayercmd.Config, logger *zap.Logger, metrics *r
 	}
 }
 
-// UpdateClient updates the IBC light client on src chain that tracks dst chain given the configured path
+// UpdateClient updates the IBC light client on src chain that tracks dst chain
 // (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/relayer/client.go#L17)
 func (r *Relayer) UpdateClient(
 	ctx context.Context,
@@ -40,6 +40,18 @@ func (r *Relayer) UpdateClient(
 	dst *relayer.Chain,
 	numRetries uint,
 ) error {
+	// get client ID for the dst IBC light client on src chain in DB
+	clientID, err := r.getClientID(dst.ChainID())
+	if err != nil {
+		r.logger.Error(
+			"failed to get client ID for CZ light client",
+			zap.String("src_chain_id", src.ChainID()),
+			zap.String("dst_chain_id", dst.ChainID()),
+			zap.Error(err),
+		)
+		return err
+	}
+
 	// query the latest heights on src and dst
 	var srch, dsth int64
 	if err := retry.Do(func() error {
@@ -63,7 +75,7 @@ func (r *Relayer) UpdateClient(
 	}
 
 	// generate MsgUpdateClient that carries dst header and is sent to src
-	srcMsgUpdateClient, err := r.CreateMsgUpdateClient(ctx, dst, src, dsth, srch)
+	srcMsgUpdateClient, err := r.CreateMsgUpdateClient(ctx, dst, src, dsth, srch, clientID)
 	if err != nil {
 		return err
 	}
@@ -97,7 +109,7 @@ func (r *Relayer) UpdateClient(
 		"successfully updated the client",
 		zap.String("src_chain_id", src.ChainID()),
 		zap.String("dst_chain_id", dst.ChainID()),
-		zap.String("dst_client", dst.PathEnd.ClientID),
+		zap.String("dst_client", clientID),
 	)
 
 	return nil
@@ -188,11 +200,11 @@ func (r *Relayer) KeepUpdatingClients(
 		}
 
 		// get CZ object from config
-		czChain, err := r.cfg.Chains.Get(chain.Chainid)
+		czChain, err := r.cfg.Chains.Get(chain.ChainID())
 		if err != nil {
 			r.logger.Error(
 				"CZ chain not found in config",
-				zap.String("dst_chain_id", chain.Chainid),
+				zap.String("dst_chain_id", chain.ChainID()),
 				zap.Error(err),
 			)
 			continue

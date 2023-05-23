@@ -18,24 +18,13 @@ import (
 // header and is sent to the `sender` IBC client with the given clientID
 // in the `receiver` chain.
 // same as https://github.com/cosmos/relayer/blob/v2.3.1/relayer/client.go
-// except for getting the client ID from DB
+// except for using the client ID from DB
 func (r *Relayer) CreateMsgUpdateClient(
 	ctx context.Context,
 	sender, receiver *relayer.Chain,
 	senderHeight, receiverHeight int64,
+	clientID string,
 ) (provider.RelayerMessage, error) {
-	// get client ID for the sender IBC light client on receiver chain in DB
-	clientID, err := r.getClientID(sender.Chainid)
-	if err != nil {
-		r.logger.Error(
-			"failed to get client ID for CZ light client",
-			zap.String("src_chain_id", receiver.ChainID()),
-			zap.String("dst_chain_id", sender.ChainID()),
-			zap.Error(err),
-		)
-		return nil, err
-	}
-
 	var dstClientState ibcexported.ClientState
 	if err := retry.Do(func() error {
 		var err error

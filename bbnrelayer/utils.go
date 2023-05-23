@@ -57,15 +57,18 @@ func (r *Relayer) createClientIfNotExist(
 	dsth--
 
 	// check whether the dst light client exists on src at the latest height
-	// if exists, return directly
-	if len(src.PathEnd.ClientID) != 0 {
-		_, err := src.ChainProvider.QueryClientState(ctx, srch, src.ClientID())
-		if err == nil {
+	// if exists and queryable, return directly
+	clientID, err := r.getClientID(dst.ChainID())
+	if err != nil {
+		return err
+	}
+	if len(clientID) > 0 {
+		if _, err := src.ChainProvider.QueryClientState(ctx, srch, clientID); err == nil {
 			r.logger.Info(
 				"the light client already exists. Skip creating the light client.",
 				zap.String("src_chain_id", src.ChainID()),
 				zap.String("dst_chain_id", dst.ChainID()),
-				zap.String("dst_client_id", src.PathEnd.ClientID),
+				zap.String("dst_client_id", clientID),
 			)
 			return nil
 		}
@@ -104,14 +107,13 @@ func (r *Relayer) createClientIfNotExist(
 	// automatically get TrustingPeriod, which has to be smaller than UnbondingPeriod
 	dstUnbondingPeriod, err := dst.ChainProvider.QueryUnbondingPeriod(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get UnbondingPeriod of chain %s: %w", dst.Chainid, err)
+		return fmt.Errorf("failed to get UnbondingPeriod of chain %s: %w", dst.ChainID(), err)
 	}
 	// 85% of unbonding period
 	// TODO: parameterise percentage
 	dstTrustingPeriod := dstUnbondingPeriod / 100 * trustingPeriodPercentage
 
 	// create the client on src chain, where we use default values for some fields
-	var clientID string
 	krErr := r.accessKeyWithLock(func() {
 		clientID, err = relayer.CreateClient(
 			ctx,

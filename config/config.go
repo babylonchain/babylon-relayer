@@ -12,7 +12,6 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	zaplogfmt "github.com/jsternberg/zap-logfmt"
 	"github.com/spf13/cobra"
-	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/term"
@@ -31,7 +30,7 @@ func GetDBPath(homePath string) string {
 	return path.Join(homePath, "db", "client-ids.db")
 }
 
-// LoadConfig loads the config file in the given path to a config struct
+// LoadConfig loads the config file in the given home path to a config struct
 // (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/config.go#L544)
 func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error) {
 	// get config path from home path
@@ -93,20 +92,6 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 		chain := relayer.NewChain(logger, prov, debug)
 		chains[chainName] = chain
 	}
-
-	// read paths from DB
-	dbPath := GetDBPath(homePath)
-	db, err := leveldb.OpenFile(dbPath, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error opening level DB (%s): %w", dbPath, err)
-	}
-	for pathName := range cfgWrapper.Paths {
-		clientID, err := db.Get([]byte(pathName), nil)
-		if err == nil { // client ID exists
-			cfgWrapper.Paths[pathName].Src.ClientID = string(clientID)
-		}
-	}
-	db.Close()
 
 	// build the config struct
 	config := &relayercmd.Config{

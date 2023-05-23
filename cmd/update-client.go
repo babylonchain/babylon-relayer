@@ -19,13 +19,13 @@ import (
 // (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/tx.go#L232)
 func updateClientCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update-client babylon_chain_name cz_chain_name path_name",
-		Short: "update IBC client on babylon_chain_name that tracks cz_chain_name with a configured path",
-		Long: `Update IBC client on babylon_chain_name that tracks cz_chain_name with a configured path.
+		Use:   "update-client babylon_chain_name cz_chain_name",
+		Short: "update IBC client on babylon_chain_name that tracks cz_chain_name",
+		Long: `Update IBC client on babylon_chain_name that tracks cz_chain_name.
 Clients are updated by querying headers from cz_chain_name and then sending the
 corresponding update-client message to babylon_chain_name.`,
-		Args:    withUsage(cobra.ExactArgs(3)),
-		Example: strings.TrimSpace(fmt.Sprintf(`$ %s update-client babylon osmosis demo-path`, AppName)),
+		Args:    withUsage(cobra.ExactArgs(2)),
+		Example: strings.TrimSpace(fmt.Sprintf(`$ %s update-client babylon osmosis`, AppName)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// load config
 			homePath, err := cmd.Flags().GetString("home")
@@ -37,7 +37,7 @@ corresponding update-client message to babylon_chain_name.`,
 				return err
 			}
 
-			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, cfg, args)
+			logger, babylonChain, czChain, err := getLoggerAndChains(cmd, cfg, args)
 			if err != nil {
 				return err
 			}
@@ -72,7 +72,7 @@ func keepUpdatingClientCmd() *cobra.Command {
 Clients are updated by querying headers from cz_chain_name and then sending the
 corresponding update-client message to babylon_chain_name.`,
 		Args:    withUsage(cobra.ExactArgs(2)),
-		Example: strings.TrimSpace(fmt.Sprintf(`$ %s keep-update-client babylon osmosis demo-path`, AppName)),
+		Example: strings.TrimSpace(fmt.Sprintf(`$ %s keep-update-client babylon osmosis`, AppName)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// load config
 			homePath, err := cmd.Flags().GetString("home")
@@ -84,7 +84,7 @@ corresponding update-client message to babylon_chain_name.`,
 				return err
 			}
 
-			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, cfg, args)
+			logger, babylonChain, czChain, err := getLoggerAndChains(cmd, cfg, args)
 			if err != nil {
 				return err
 			}
