@@ -7,11 +7,9 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/babylonchain/babylon-relayer/config"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/juju/fslock"
-	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
 )
 
@@ -153,16 +151,10 @@ func (r *Relayer) createClientIfNotExist(
 
 	// the client is now created and queryable
 	// writes the config with this client ID to DB
-	dbPath := config.GetDBPath(r.homePath)
-	db, err := leveldb.OpenFile(dbPath, nil)
-	if err != nil {
-		return fmt.Errorf("error opening LevelDB (%s): %w", dbPath, err)
+	if err := r.setClientID(pathName, clientID); err != nil {
+		return fmt.Errorf("error writing clientID %s for chain %s to LevelDB: %w", clientID, pathName, err)
 	}
-	err = db.Put([]byte(pathName), []byte(clientID), nil)
-	db.Close()
-	if err != nil {
-		return fmt.Errorf("error writing to LevelDB (%s): %w", dbPath, err)
-	}
+
 	r.logger.Info(
 		"successfully inserted the light client ID to LevelDB",
 		zap.String("src_chain_id", src.ChainID()),

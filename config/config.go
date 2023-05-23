@@ -60,20 +60,6 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 		}
 	}
 
-	// insert path IDs to DB
-	dbPath := GetDBPath(homePath)
-	db, err := leveldb.OpenFile(dbPath, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error opening level DB (%s): %w", dbPath, err)
-	}
-	for pathName := range cfgWrapper.Paths {
-		clientID, err := db.Get([]byte(pathName), nil)
-		if err == nil { // client ID exists
-			cfgWrapper.Paths[pathName].Src.ClientID = string(clientID)
-		}
-	}
-	db.Close()
-
 	// build the logger struct
 	logFormat, err := cmd.Flags().GetString("log-format")
 	if err != nil {
@@ -107,6 +93,20 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 		chain := relayer.NewChain(logger, prov, debug)
 		chains[chainName] = chain
 	}
+
+	// insert path IDs to DB
+	dbPath := GetDBPath(homePath)
+	db, err := leveldb.OpenFile(dbPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error opening level DB (%s): %w", dbPath, err)
+	}
+	for pathName := range cfgWrapper.Paths {
+		clientID, err := db.Get([]byte(pathName), nil)
+		if err == nil { // client ID exists
+			cfgWrapper.Paths[pathName].Src.ClientID = string(clientID)
+		}
+	}
+	db.Close()
 
 	// build the config struct
 	config := &relayercmd.Config{
