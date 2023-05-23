@@ -66,12 +66,12 @@ corresponding update-client message to babylon_chain_name.`,
 
 func keepUpdatingClientCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "keep-update-client babylon_chain_name cz_chain_name path_name",
-		Short: "keep updating IBC client on babylon_chain_name that tracks cz_chain_name with a configured path",
-		Long: `Keep updating IBC client on babylon_chain_name that tracks cz_chain_name with a configured path.
+		Use:   "keep-update-client babylon_chain_name cz_chain_name",
+		Short: "keep updating IBC client on babylon_chain_name that tracks cz_chain_name",
+		Long: `Keep updating IBC client on babylon_chain_name that tracks cz_chain_name.
 Clients are updated by querying headers from cz_chain_name and then sending the
 corresponding update-client message to babylon_chain_name.`,
-		Args:    withUsage(cobra.ExactArgs(3)),
+		Args:    withUsage(cobra.ExactArgs(2)),
 		Example: strings.TrimSpace(fmt.Sprintf(`$ %s keep-update-client babylon osmosis demo-path`, AppName)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// load config
@@ -88,7 +88,6 @@ corresponding update-client message to babylon_chain_name.`,
 			if err != nil {
 				return err
 			}
-			pathName := args[2]
 
 			// ensure that key in babylonChain chain exists
 			if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
@@ -128,7 +127,7 @@ corresponding update-client message to babylon_chain_name.`,
 
 			relayer := bbnrelayer.New(homePath, cfg, logger, metrics)
 
-			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, pathName, interval, numRetries)
+			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, interval, numRetries)
 		},
 	}
 

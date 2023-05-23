@@ -62,8 +62,8 @@ func (r *Relayer) UpdateClient(
 		return err
 	}
 
-	// generate MsgUpdateClient that carries dst header to src
-	srcMsgUpdateClient, err := relayer.MsgUpdateClient(ctx, dst, src, dsth, srch)
+	// generate MsgUpdateClient that carries dst header and is sent to src
+	srcMsgUpdateClient, err := r.CreateMsgUpdateClient(ctx, dst, src, dsth, srch)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,6 @@ func (r *Relayer) UpdateClient(
 	r.logger.Info(
 		"successfully updated the client",
 		zap.String("src_chain_id", src.ChainID()),
-		zap.String("src_client", src.PathEnd.ClientID),
 		zap.String("dst_chain_id", dst.ChainID()),
 		zap.String("dst_client", dst.PathEnd.ClientID),
 	)
@@ -108,17 +107,14 @@ func (r *Relayer) KeepUpdatingClient(
 	ctx context.Context,
 	src *relayer.Chain,
 	dst *relayer.Chain,
-	pathName string,
 	interval time.Duration,
 	numRetries uint,
 ) error {
 	// ensure the CZ chain light client exists on Babylon
-	if err := r.createClientIfNotExist(ctx, src, dst, pathName, numRetries); err != nil {
+	if err := r.createClientIfNotExist(ctx, src, dst, numRetries); err != nil {
 		r.logger.Error(
 			"failed to ensure CZ light client exists on Babylon. Stop relaying the chain",
-			zap.String("src_client_id", src.PathEnd.ClientID),
 			zap.String("src_chain_id", src.ChainID()),
-			zap.String("dst_client_id", dst.PathEnd.ClientID),
 			zap.String("dst_chain_id", dst.ChainID()),
 			zap.Error(err),
 		)
@@ -128,9 +124,7 @@ func (r *Relayer) KeepUpdatingClient(
 	r.logger.Info(
 		"Keep updating client",
 		zap.String("src_chain_id", src.ChainID()),
-		zap.String("src_client", src.PathEnd.ClientID),
 		zap.String("dst_chain_id", dst.ChainID()),
-		zap.String("dst_client", dst.PathEnd.ClientID),
 		zap.Duration("interval", interval),
 	)
 	r.metrics.RelayedChainsCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
@@ -142,9 +136,7 @@ func (r *Relayer) KeepUpdatingClient(
 			r.logger.Error(
 				"Failed to update client",
 				zap.String("src_chain_id", src.ChainID()),
-				zap.String("src_client", src.PathEnd.ClientID),
 				zap.String("dst_chain_id", dst.ChainID()),
-				zap.String("dst_client", dst.PathEnd.ClientID),
 				zap.Error(err),
 			)
 			r.metrics.FailedHeadersCounter.WithLabelValues(src.ChainID(), dst.ChainID()).Inc()
@@ -165,53 +157,46 @@ func (r *Relayer) KeepUpdatingClients(
 	interval time.Duration,
 	numRetries uint,
 ) {
+	// get babylonChain object from config
+	babylonChain, err := r.cfg.Chains.Get("babylon") // TODO: parameterise Babylon chain name
+	if err != nil {
+		r.logger.Error(
+			"babylon not found in config",
+			zap.Error(err),
+		)
+		// none of the chains can be relayed without Babylon
+		return
+	}
+
+	// ensure that key in babylonChain chain exists
+	if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
+		r.logger.Error(
+			"key not found on Babylon chain",
+			zap.String("key", babylonChain.ChainProvider.Key()),
+			zap.String("src_chain_id", babylonChain.ChainID()),
+		)
+		// non of the chains can be relayed without a keyring of Babylon
+		return
+	}
+
 	r.logger.Info("Start relaying headers for the following chains", zap.Any("paths", r.cfg.Paths))
 
-	// for each CZ, start a KeepUpdatingClient go routine
-	for pathName, path := range r.cfg.Paths {
-		// get babylonChain object from config
-		babylonChain, err := r.cfg.Chains.Get(path.Src.ChainID)
-		if err != nil {
-			r.logger.Error(
-				"babylon not found in config",
-				zap.String("path", pathName),
-				zap.String("src_chain_id", path.Src.ChainID),
-				zap.Error(err),
-			)
-			// non of the chains can be relayed without Babylon
-			return
-		}
-		// ensure that key in babylonChain chain exists
-		if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
-			r.logger.Error(
-				"key not found on Babylon chain",
-				zap.String("path", pathName),
-				zap.String("key", babylonChain.ChainProvider.Key()),
-				zap.String("src_chain_id", babylonChain.ChainID()),
-			)
-			// non of the chains can be relayed without a keyring of Babylon
-			return
+	// for each CZ (other than Babylon), start a KeepUpdatingClient go routine
+	for chainName, chain := range r.cfg.Chains {
+		if chainName == "babylon" {
+			continue
 		}
 
 		// get CZ object from config
-		czChain, err := r.cfg.Chains.Get(path.Dst.ChainID)
+		czChain, err := r.cfg.Chains.Get(chain.Chainid)
 		if err != nil {
 			r.logger.Error(
 				"CZ chain not found in config",
-				zap.String("path", pathName),
-				zap.String("dst_chain_id", path.Dst.ChainID),
+				zap.String("dst_chain_id", chain.Chainid),
 				zap.Error(err),
 			)
 			continue
 		}
-
-		// copy the objects to prevent them from sharing the same PathEnd
-		copiedBabylonChain := *babylonChain
-		copiedCZChain := *czChain
-		copiedPathName := pathName
-		// set path end for two chains
-		copiedBabylonChain.PathEnd = path.End(babylonChain.ChainID())
-		copiedCZChain.PathEnd = path.End(czChain.ChainID())
 
 		// ensure the czChain light client exists, then start updating the czChain light client on babylonChain
 		wg.Add(1)
@@ -219,17 +204,15 @@ func (r *Relayer) KeepUpdatingClients(
 			defer wg.Done()
 
 			// keep updating the client
-			if err := r.KeepUpdatingClient(ctx, &copiedBabylonChain, &copiedCZChain, copiedPathName, interval, numRetries); err != nil {
+			if err := r.KeepUpdatingClient(ctx, babylonChain, czChain, interval, numRetries); err != nil {
 				// NOTE: we don't panic here since the relayer should keep relaying other chains
 				r.logger.Error(
 					"failed to update CZ chain. Stop relaying the chain",
-					zap.String("src_client_id", copiedBabylonChain.PathEnd.ClientID),
-					zap.String("src_chain_id", copiedBabylonChain.ChainID()),
-					zap.String("dst_client_id", copiedCZChain.PathEnd.ClientID),
-					zap.String("dst_chain_id", copiedCZChain.ChainID()),
+					zap.String("src_chain_id", babylonChain.ChainID()),
+					zap.String("dst_chain_id", czChain.ChainID()),
 					zap.Error(err),
 				)
-				r.metrics.FailedChainsCounter.WithLabelValues(copiedBabylonChain.ChainID(), copiedCZChain.ChainID()).Inc()
+				r.metrics.FailedChainsCounter.WithLabelValues(babylonChain.ChainID(), czChain.ChainID()).Inc()
 			}
 		}()
 	}

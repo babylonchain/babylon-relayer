@@ -94,7 +94,7 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 		chains[chainName] = chain
 	}
 
-	// insert path IDs to DB
+	// read paths from DB
 	dbPath := GetDBPath(homePath)
 	db, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {

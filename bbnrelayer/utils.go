@@ -27,7 +27,6 @@ func (r *Relayer) createClientIfNotExist(
 	ctx context.Context,
 	src *relayer.Chain,
 	dst *relayer.Chain,
-	pathName string,
 	numRetries uint,
 ) error {
 	// query the latest heights on src and dst
@@ -134,9 +133,6 @@ func (r *Relayer) createClientIfNotExist(
 		return err
 	}
 
-	// assign clientID to source path end
-	src.PathEnd.ClientID = clientID
-
 	r.logger.Info(
 		"successfully created the light client",
 		zap.String("src_chain_id", src.ChainID()),
@@ -151,8 +147,8 @@ func (r *Relayer) createClientIfNotExist(
 
 	// the client is now created and queryable
 	// writes the config with this client ID to DB
-	if err := r.setClientID(pathName, clientID); err != nil {
-		return fmt.Errorf("error writing clientID %s for chain %s to LevelDB: %w", clientID, pathName, err)
+	if err := r.setClientID(dst.ChainID(), clientID); err != nil {
+		return fmt.Errorf("error writing clientID %s for chain %s to LevelDB: %w", clientID, dst.ChainID(), err)
 	}
 
 	r.logger.Info(
