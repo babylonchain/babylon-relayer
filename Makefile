@@ -4,20 +4,20 @@ DOCKER = $(shell which docker)
 
 all: lint install
 
-build: go.sum
-ifeq ($(OS),Windows_NT)
-	@echo "building babylon-relayer binary..."
-	@go build -mod=readonly -o build/babylon-relayer.exe main.go
-else
-	@echo "building babylon-relayer binary..."
-	@go build -mod=readonly -o build/babylon-relayer main.go
-endif
+build:
+	ifeq ($(OS),Windows_NT)
+		@echo "building babylon-relayer binary..."
+		@go build -mod=readonly -o build/babylon-relayer.exe main.go
+	else
+		@echo "building babylon-relayer binary..."
+		@go build -mod=readonly -o build/babylon-relayer main.go
+	endif
 
 clean:
 	@echo "removing build/"
 	@rm -rf ./build
 
-install: go.sum
+install:
 	@echo "installing babylon-relayer binary..."
 	@go build -mod=readonly -o $(GOBIN)/babylon-relayer main.go
 
@@ -29,8 +29,10 @@ lint:
 	@find . -name '*.go' -type f -not -path "*.git*" | xargs gofmt -d -s
 	@go mod verify
 
-relayer-docker: relayer-docker-rmi
-	$(DOCKER) build --tag babylonchain/babylon-relayer .
+build-relayer-docker:
+	@make -C contrib/images babylon-relayer
 
-relayer-docker-rmi:
-	$(DOCKER) rmi babylonchain/babylon-relayer 2>/dev/null
+build-ibcsim-gaia-docker:
+	$(MAKE) -C contrib/images ibcsim-gaia
+
+.PHONY: all build clean install test lint build-relayer-docker build-ibcsim-gaia-docker
