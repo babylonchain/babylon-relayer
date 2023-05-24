@@ -69,7 +69,7 @@ sleep 10
 echo "Status of Gaia node"
 gaiad status
 
-sleep 30
+sleep 15
 
 # 2. Create the relayer
 echo "Inserting Babylon key"

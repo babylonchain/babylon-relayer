@@ -5,13 +5,8 @@ DOCKER = $(shell which docker)
 all: lint install
 
 build:
-	ifeq ($(OS),Windows_NT)
-		@echo "building babylon-relayer binary..."
-		@go build -mod=readonly -o build/babylon-relayer.exe main.go
-	else
-		@echo "building babylon-relayer binary..."
-		@go build -mod=readonly -o build/babylon-relayer main.go
-	endif
+	@echo "building babylon-relayer binary..."
+	@go build -mod=readonly -o build/babylon-relayer main.go
 
 clean:
 	@echo "removing build/"

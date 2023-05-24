@@ -113,6 +113,12 @@ func (r *Relayer) createClientIfNotExist(
 	// TODO: parameterise percentage
 	dstTrustingPeriod := dstUnbondingPeriod / 100 * trustingPeriodPercentage
 
+	// `relayer.CreateClient` will access the PathEnd of src chain
+	// since we don't require phase1 integration to set up paths,
+	// we need to create empty PathEnd here to prevent nil pointer error
+	if src.PathEnd == nil {
+		src.PathEnd = &relayer.PathEnd{}
+	}
 	// create the client on src chain, where we use default values for some fields
 	krErr := r.accessKeyWithLock(func() {
 		clientID, err = relayer.CreateClient(

@@ -166,16 +166,14 @@ func (r *Relayer) KeepUpdatingClient(
 func (r *Relayer) KeepUpdatingClients(
 	ctx context.Context,
 	wg *sync.WaitGroup,
+	babylonChainName string,
 	interval time.Duration,
 	numRetries uint,
 ) {
 	// get babylonChain object from config
-	babylonChain, err := r.cfg.Chains.Get("babylon") // TODO: parameterise Babylon chain name
-	if err != nil {
-		r.logger.Error(
-			"babylon not found in config",
-			zap.Error(err),
-		)
+	babylonChain, ok := r.cfg.Chains[babylonChainName]
+	if !ok {
+		r.logger.Error("babylon not found in config")
 		// none of the chains can be relayed without Babylon
 		return
 	}
@@ -193,7 +191,7 @@ func (r *Relayer) KeepUpdatingClients(
 
 	// for each CZ (other than Babylon), start a KeepUpdatingClient go routine
 	for chainName, chain := range r.cfg.Chains {
-		if chainName == "babylon" {
+		if chainName == babylonChainName {
 			continue
 		}
 
