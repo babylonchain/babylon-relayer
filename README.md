@@ -2,13 +2,9 @@
 
 Babylon relayer is an extended version of the IBC relayer specialised for timestamping Cosmos SDK chains.
 
-## Requirements
-
-- Go 1.19
-
 ## Development requirements
 
-- Go 1.19
+- Go 1.20
 
 ## Building
 
