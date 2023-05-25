@@ -156,11 +156,11 @@ func (r *Relayer) createClientIfNotExist(
 	// the client is now created and queryable
 	// writes the config with this client ID to DB
 	if err := r.setClientID(dst.ChainID(), clientID); err != nil {
-		return fmt.Errorf("error writing clientID %s for chain %s to LevelDB: %w", clientID, dst.ChainID(), err)
+		return fmt.Errorf("error writing clientID %s for chain %s to DB: %w", clientID, dst.ChainID(), err)
 	}
 
 	r.logger.Info(
-		"successfully inserted the light client ID to LevelDB",
+		"successfully inserted the light client ID to DB",
 		zap.String("src_chain_id", src.ChainID()),
 		zap.String("dst_chain_id", dst.ChainID()),
 		zap.String("dst_client_id", src.ClientID()),
