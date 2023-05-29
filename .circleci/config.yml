@@ -42,7 +42,7 @@ jobs:
       - aws-ecr/build-image:
           push-image: false
           dockerfile: Dockerfile
-          path: ./
+          path: ./contrib/images/babylon-relayer
           build-path: ./
           tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
           repo: "$CIRCLE_PROJECT_REPONAME"
