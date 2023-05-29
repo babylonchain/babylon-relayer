@@ -27,7 +27,4 @@ lint:
 build-relayer-docker:
 	@make -C contrib/images babylon-relayer
 
-build-ibcsim-gaia-docker:
-	$(MAKE) -C contrib/images ibcsim-gaia
-
-.PHONY: all build clean install test lint build-relayer-docker build-ibcsim-gaia-docker
+.PHONY: all build clean install test lint build-relayer-docker
