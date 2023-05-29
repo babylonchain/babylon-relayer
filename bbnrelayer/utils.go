@@ -7,11 +7,9 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/babylonchain/babylon-relayer/config"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/juju/fslock"
-	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +27,6 @@ func (r *Relayer) createClientIfNotExist(
 	ctx context.Context,
 	src *relayer.Chain,
 	dst *relayer.Chain,
-	pathName string,
 	numRetries uint,
 ) error {
 	// query the latest heights on src and dst
@@ -60,15 +57,18 @@ func (r *Relayer) createClientIfNotExist(
 	dsth--
 
 	// check whether the dst light client exists on src at the latest height
-	// if exists, return directly
-	if len(src.PathEnd.ClientID) != 0 {
-		_, err := src.ChainProvider.QueryClientState(ctx, srch, src.ClientID())
-		if err == nil {
+	// if exists and queryable, return directly
+	clientID, err := r.getClientID(dst.ChainID())
+	if err != nil {
+		return err
+	}
+	if len(clientID) > 0 {
+		if _, err := src.ChainProvider.QueryClientState(ctx, srch, clientID); err == nil {
 			r.logger.Info(
 				"the light client already exists. Skip creating the light client.",
 				zap.String("src_chain_id", src.ChainID()),
 				zap.String("dst_chain_id", dst.ChainID()),
-				zap.String("dst_client_id", src.PathEnd.ClientID),
+				zap.String("dst_client_id", clientID),
 			)
 			return nil
 		}
@@ -107,14 +107,19 @@ func (r *Relayer) createClientIfNotExist(
 	// automatically get TrustingPeriod, which has to be smaller than UnbondingPeriod
 	dstUnbondingPeriod, err := dst.ChainProvider.QueryUnbondingPeriod(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get UnbondingPeriod of chain %s: %w", dst.Chainid, err)
+		return fmt.Errorf("failed to get UnbondingPeriod of chain %s: %w", dst.ChainID(), err)
 	}
 	// 85% of unbonding period
 	// TODO: parameterise percentage
 	dstTrustingPeriod := dstUnbondingPeriod / 100 * trustingPeriodPercentage
 
+	// `relayer.CreateClient` will access the PathEnd of src chain
+	// since we don't require phase1 integration to set up paths,
+	// we need to create empty PathEnd here to prevent nil pointer error
+	if src.PathEnd == nil {
+		src.PathEnd = &relayer.PathEnd{}
+	}
 	// create the client on src chain, where we use default values for some fields
-	var clientID string
 	krErr := r.accessKeyWithLock(func() {
 		clientID, err = relayer.CreateClient(
 			ctx,
@@ -136,9 +141,6 @@ func (r *Relayer) createClientIfNotExist(
 		return err
 	}
 
-	// assign clientID to source path end
-	src.PathEnd.ClientID = clientID
-
 	r.logger.Info(
 		"successfully created the light client",
 		zap.String("src_chain_id", src.ChainID()),
@@ -153,18 +155,12 @@ func (r *Relayer) createClientIfNotExist(
 
 	// the client is now created and queryable
 	// writes the config with this client ID to DB
-	dbPath := config.GetDBPath(r.homePath)
-	db, err := leveldb.OpenFile(dbPath, nil)
-	if err != nil {
-		return fmt.Errorf("error opening LevelDB (%s): %w", dbPath, err)
+	if err := r.setClientID(dst.ChainID(), clientID); err != nil {
+		return fmt.Errorf("error writing clientID %s for chain %s to DB: %w", clientID, dst.ChainID(), err)
 	}
-	err = db.Put([]byte(pathName), []byte(clientID), nil)
-	db.Close()
-	if err != nil {
-		return fmt.Errorf("error writing to LevelDB (%s): %w", dbPath, err)
-	}
+
 	r.logger.Info(
-		"successfully inserted the light client ID to LevelDB",
+		"successfully inserted the light client ID to DB",
 		zap.String("src_chain_id", src.ChainID()),
 		zap.String("dst_chain_id", dst.ChainID()),
 		zap.String("dst_client_id", src.ClientID()),

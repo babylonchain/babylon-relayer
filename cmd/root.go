@@ -44,7 +44,7 @@ func NewRootCmd(log *zap.Logger) *cobra.Command {
 	rootCmd.Use = AppName
 	rootCmd.Short = "This application is used for relaying headers from Cosmos Zones to Babylon periodically."
 	rootCmd.Long = strings.TrimSpace(fmt.Sprintf(`%s has:
-	1. Configuration management for Chains and Paths
+	1. Configuration management for Chains
 	2. Key management for managing multiple keys for multiple chains
 	3. Query and transaction functionality for IBC
 	4. Functionality for relaying headers from Cosmos Zones to Babylon periodically
