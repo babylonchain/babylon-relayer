@@ -44,7 +44,17 @@ func StartDebugServer(ctx context.Context, log *zap.Logger, ln net.Listener, met
 		},
 	}
 
-	go srv.Serve(ln)
+	go func() {
+		if err := srv.Serve(ln); err != nil {
+			log.Error("failed to start debug server",
+				zap.String("address", ln.Addr().String()),
+				zap.Error(err),
+			)
+		}
+		log.Error("successfully started debug server",
+			zap.String("address", ln.Addr().String()),
+		)
+	}()
 
 	go func() {
 		<-ctx.Done()

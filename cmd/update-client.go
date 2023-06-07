@@ -8,6 +8,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon-relayer/bbnrelayer"
+	"github.com/babylonchain/babylon-relayer/config"
 	relaydebug "github.com/babylonchain/babylon-relayer/debug"
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/spf13/cobra"
@@ -26,7 +27,17 @@ corresponding update-client message to babylon_chain_name.`,
 		Args:    withUsage(cobra.ExactArgs(3)),
 		Example: strings.TrimSpace(fmt.Sprintf(`$ %s update-client babylon osmosis demo-path`, AppName)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, args)
+			// load config
+			homePath, err := cmd.Flags().GetString("home")
+			if err != nil {
+				return err
+			}
+			cfg, err := config.LoadConfig(homePath, cmd)
+			if err != nil {
+				return err
+			}
+
+			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, cfg, args)
 			if err != nil {
 				return err
 			}
@@ -36,23 +47,18 @@ corresponding update-client message to babylon_chain_name.`,
 				return fmt.Errorf("key %s not found on babylonChain chain %s", babylonChain.ChainProvider.Key(), babylonChain.ChainID())
 			}
 
-			memo, err := cmd.Flags().GetString("memo")
-			if err != nil {
-				return err
-			}
 			numRetries, err := cmd.Flags().GetUint("retry")
 			if err != nil {
 				return err
 			}
 
 			prometheusMetrics := relaydebug.NewPrometheusMetrics()
-			relayer := bbnrelayer.New(logger, prometheusMetrics)
+			relayer := bbnrelayer.New(homePath, cfg, logger, prometheusMetrics)
 
-			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, memo, numRetries)
+			return relayer.UpdateClient(cmd.Context(), babylonChain, czChain, numRetries)
 		},
 	}
 
-	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().Uint("retry", relayer.RtyAttNum, "number of retry attempts for requests")
 
 	return cmd
@@ -68,10 +74,21 @@ corresponding update-client message to babylon_chain_name.`,
 		Args:    withUsage(cobra.ExactArgs(3)),
 		Example: strings.TrimSpace(fmt.Sprintf(`$ %s keep-update-client babylon osmosis demo-path`, AppName)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, args)
+			// load config
+			homePath, err := cmd.Flags().GetString("home")
 			if err != nil {
 				return err
 			}
+			cfg, err := config.LoadConfig(homePath, cmd)
+			if err != nil {
+				return err
+			}
+
+			logger, babylonChain, czChain, err := getLoggerAndPathEnds(cmd, cfg, args)
+			if err != nil {
+				return err
+			}
+			pathName := args[2]
 
 			// ensure that key in babylonChain chain exists
 			if exists := babylonChain.ChainProvider.KeyExists(babylonChain.ChainProvider.Key()); !exists {
@@ -79,10 +96,6 @@ corresponding update-client message to babylon_chain_name.`,
 			}
 
 			// retrieve necessary flags
-			memo, err := cmd.Flags().GetString("memo")
-			if err != nil {
-				return err
-			}
 			interval, err := cmd.Flags().GetDuration("interval")
 			if err != nil {
 				return err
@@ -113,15 +126,14 @@ corresponding update-client message to babylon_chain_name.`,
 			debugServerLogger.Info("Debug server listening", zap.String("addr", debugAddr))
 			relaydebug.StartDebugServer(cmd.Context(), debugServerLogger, ln, metrics)
 
-			relayer := bbnrelayer.New(logger, metrics)
+			relayer := bbnrelayer.New(homePath, cfg, logger, metrics)
 
-			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, memo, interval, numRetries)
+			return relayer.KeepUpdatingClient(cmd.Context(), babylonChain, czChain, pathName, interval, numRetries)
 		},
 	}
 
-	cmd.Flags().String("memo", "", "a memo to include in relayed packets")
 	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
-	cmd.Flags().Uint("retry", 20, "number of retry attempts for requests")
+	cmd.Flags().Uint("retry", 5, "number of retry attempts for requests")
 	cmd.Flags().String("debug-addr", "", "address for the debug server with Prometheus metrics")
 
 	return cmd

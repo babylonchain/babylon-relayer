@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	zaplogfmt "github.com/jsternberg/zap-logfmt"
 	"github.com/spf13/cobra"
+	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/term"
@@ -22,11 +23,19 @@ import (
 // so that all commands inherited from the official relayer can find the config file
 var DefaultHome = filepath.Join(os.Getenv("HOME"), ".relayer")
 
+func GetCfgPath(homePath string) string {
+	return path.Join(homePath, "config", "config.yaml")
+}
+
+func GetDBPath(homePath string) string {
+	return path.Join(homePath, "db", "client-ids.db")
+}
+
 // LoadConfig loads the config file in the given path to a config struct
 // (adapted from https://github.com/cosmos/relayer/blob/v2.1.2/cmd/config.go#L544)
 func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error) {
 	// get config path from home path
-	cfgPath := path.Join(homePath, "config", "config.yaml")
+	cfgPath := GetCfgPath(homePath)
 	if _, err := os.Stat(cfgPath); err != nil {
 		return nil, fmt.Errorf("path %s does not point to a config file: %v", cfgPath, err)
 	}
@@ -50,6 +59,20 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 			return nil, fmt.Errorf("error initializing the relayer config for path %s: %w", p.String(), err)
 		}
 	}
+
+	// insert path IDs to DB
+	dbPath := GetDBPath(homePath)
+	db, err := leveldb.OpenFile(dbPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error opening level DB (%s): %w", dbPath, err)
+	}
+	for pathName := range cfgWrapper.Paths {
+		clientID, err := db.Get([]byte(pathName), nil)
+		if err == nil { // client ID exists
+			cfgWrapper.Paths[pathName].Src.ClientID = string(clientID)
+		}
+	}
+	db.Close()
 
 	// build the logger struct
 	logFormat, err := cmd.Flags().GetString("log-format")
@@ -76,6 +99,9 @@ func LoadConfig(homePath string, cmd *cobra.Command) (*relayercmd.Config, error)
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build ChainProviders: %w", err)
+		}
+		if err := prov.Init(cmd.Context()); err != nil {
+			return nil, fmt.Errorf("failed to initialize provider: %w", err)
 		}
 
 		chain := relayer.NewChain(logger, prov, debug)
