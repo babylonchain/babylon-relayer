@@ -104,15 +104,6 @@ func (r *Relayer) createClientIfNotExist(
 		return err
 	}
 
-	// automatically get TrustingPeriod, which has to be smaller than UnbondingPeriod
-	dstUnbondingPeriod, err := dst.ChainProvider.QueryUnbondingPeriod(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get UnbondingPeriod of chain %s: %w", dst.ChainID(), err)
-	}
-	// 85% of unbonding period
-	// TODO: parameterise percentage
-	dstTrustingPeriod := dstUnbondingPeriod / 100 * trustingPeriodPercentage
-
 	// `relayer.CreateClient` will access the PathEnd of src chain
 	// since we don't require phase1 integration to set up paths,
 	// we need to create empty PathEnd here to prevent nil pointer error
@@ -130,7 +121,8 @@ func (r *Relayer) createClientIfNotExist(
 			allowUpdateAfterExpiry,
 			allowUpdateAfterMisbehaviour,
 			override,
-			dstTrustingPeriod,
+			0, // relayer will calculate the trusting period based on unbonding period if this is 0
+			0, // relayer will query the unbonding period if this is 0
 			r.cfg.Global.Memo,
 		)
 	})
