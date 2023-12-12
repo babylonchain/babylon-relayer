@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   aws-ecr: circleci/aws-ecr@8.2.1
+  go: circleci/go@1.9.0
 
 jobs:
   build_lint_test:
@@ -9,24 +10,25 @@ jobs:
       image: ubuntu-2204:2022.10.1
       resource_class: large
     steps:
+      - go/install:
+          version: "1.21.4"
       - checkout
       - run:
           name: Print Go environment
           command: "go env"
-      - restore_cache: # restores saved cache if no changes are detected since last run
-          keys:
-            - go-mod-v6-{{ checksum "go.sum" }}
+      - go/load-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+      - go/mod-download
+      - go/save-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+          path: "/home/circleci/.go_workspace/pkg/mod"
       - run:
           name: Build
           command: make build
-      - save_cache:
-          key: go-mod-v6-{{ checksum "go.sum" }}
-          paths:
-            - "/home/circleci/.go_workspace/pkg/mod"
       - run:
           name: Lint
           command: |
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.50.1
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.55.2
             ./bin/golangci-lint run
       - run:
           name: Run tests
