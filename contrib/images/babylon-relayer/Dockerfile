@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine AS build
+FROM golang:1.21-alpine AS build
 RUN apk add build-base git linux-headers
 WORKDIR /work
 COPY go.mod go.sum /work/
@@ -12,7 +12,7 @@ FROM alpine:3.14 AS run
 RUN apk add bash curl jq
 
 # copy wrapper script
-COPY scripts/wrapper.sh /usr/bin/wrapper.sh
+COPY contrib/images/babylon-relayer/wrapper.sh /usr/bin/wrapper.sh
 
 # Copy over binaries from the build-env
 VOLUME /app

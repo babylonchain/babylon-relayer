@@ -48,7 +48,13 @@ func keepUpdatingClientsCmd() *cobra.Command {
 				return err
 			}
 
-			// retrieve necessary flags
+			// get name of the Babylon chain specified in config
+			// by default, it's "babylon"
+			babylonChainName, err := cmd.Flags().GetString("babylon-chain-name")
+			if err != nil {
+				return err
+			}
+			// get relay interval
 			interval, err := cmd.Flags().GetDuration("interval")
 			if err != nil {
 				return err
@@ -64,7 +70,6 @@ func keepUpdatingClientsCmd() *cobra.Command {
 
 			// initialise prometheus registry
 			metrics := relaydebug.NewPrometheusMetrics()
-
 			// start debug server with prometheus metrics
 			debugAddr, err := cmd.Flags().GetString("debug-addr")
 			if err != nil {
@@ -84,7 +89,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 
 			// start the relayer for all paths in cfg.Paths
 			relayer := bbnrelayer.New(homePath, cfg, logger, metrics)
-			relayer.KeepUpdatingClients(cmd.Context(), &wg, interval, numRetries)
+			relayer.KeepUpdatingClients(cmd.Context(), &wg, babylonChainName, interval, numRetries)
 
 			// Note that this function is executed inside `root.go`'s `Execute()` function,
 			// which keeps the program to be alive until being interrupted.
@@ -95,6 +100,7 @@ func keepUpdatingClientsCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().String("babylon-chain-name", "babylon", "name of the Babylon chain in config file")
 	cmd.Flags().Duration("interval", time.Minute*10, "the interval between two update-client attempts")
 	cmd.Flags().Uint("retry", 5, "number of retry attempts for requests")
 	cmd.Flags().String("debug-addr", "", "address for the debug server with Prometheus metrics")
