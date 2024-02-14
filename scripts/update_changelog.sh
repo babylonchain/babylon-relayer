@@ -12,12 +12,12 @@ OPTS=$(getopt -l "help,release-branch:,since-tag:,future-release:,full,token:" -
 function print_usage() {
     echo -e "Usage: $0 [-h|--help] [-f|--full] [--release-branch <branch>] [--since-tag <tag>] [--future-release] <tag> [-t|--token <token>]
 
--h, --help                Display help
--f, --full                Process changes since the beginning (by default: since latest git version tag)
---since-tag <tag>         Process changes since git version tag <tag> (by default: since latest git version tag)
---future-release <tag>    Put the unreleased changes in the specified <tag>
+-h, --help                Display help.
+-f, --full                Process changes since the beginning (by default: since latest git version tag).
+--since-tag <tag>         Process changes since git version tag <tag> (by default: since latest git version tag).
+--future-release <tag>    Put the unreleased changes in the specified <tag>.
 --release-branch <branch> Limit pull requests to the release branch <branch>.
---token <token>           Pass changelog github token <token>"
+--token <token>           Pass changelog github token <token>."
 }
 
 function remove_opt() {
